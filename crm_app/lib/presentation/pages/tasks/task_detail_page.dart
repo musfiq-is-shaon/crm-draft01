@@ -12,7 +12,6 @@ import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/searchable_dropdown.dart';
-import '../companies/companies_list_page.dart';
 
 // Provider for users
 final taskUsersProvider = FutureProvider<List>((ref) async {
@@ -326,6 +325,151 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     }
   }
 
+  Future<void> _showCreateCompanyDialog(BuildContext context) async {
+    final usersState = ref.read(usersProvider);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final borderColor = AppThemeColors.borderColor(context);
+    final primaryColor = const Color(0xFF2563EB);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+
+    final nameController = TextEditingController();
+    final locationController = TextEditingController();
+    final countryController = TextEditingController();
+    String? selectedKamUserId;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Create Company', style: TextStyle(color: textPrimary)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Company Name *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: locationController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Location',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: countryController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Country',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedKamUserId,
+                  decoration: InputDecoration(
+                    labelText: 'KAM (Key Account Manager)',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Select KAM'),
+                    ),
+                    ...usersState.users.map(
+                      (user) => DropdownMenuItem(
+                        value: user.id,
+                        child: Text(
+                          user.name,
+                          style: TextStyle(color: textPrimary),
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() => selectedKamUserId = value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: primaryColor)),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  await ref
+                      .read(companiesProvider.notifier)
+                      .createCompany(
+                        name: nameController.text,
+                        location: locationController.text.isNotEmpty
+                            ? locationController.text
+                            : null,
+                        country: countryController.text.isNotEmpty
+                            ? countryController.text
+                            : null,
+                        kamUserId: selectedKamUserId ?? '',
+                      );
+                  // Get the newly created company (first in the list)
+                  final companies = ref.read(companiesProvider).companies;
+                  if (companies.isNotEmpty && context.mounted) {
+                    Navigator.pop(context, companies.first.id);
+                  } else if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: Text('Create', style: TextStyle(color: primaryColor)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedCompanyId = result;
+      });
+    }
+  }
+
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -485,18 +629,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     },
                     onAddNew: () async {
                       ref.read(usersProvider.notifier).loadUsers();
-                      final result = await Navigator.push<String>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const CompaniesListPage(openCreateDialog: true),
-                        ),
-                      );
-                      if (result != null && mounted) {
-                        setState(() {
-                          _selectedCompanyId = result;
-                        });
-                      }
+                      await _showCreateCompanyDialog(context);
                     },
                   );
                 },
