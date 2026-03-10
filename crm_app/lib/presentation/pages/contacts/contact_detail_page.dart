@@ -1,0 +1,596 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/theme/app_theme_colors.dart';
+import '../../../data/models/contact_model.dart';
+import '../../providers/contact_provider.dart';
+import '../../providers/company_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../widgets/crm_card.dart';
+import '../../widgets/loading_widget.dart';
+import '../companies/companies_list_page.dart';
+
+class ContactDetailPage extends ConsumerWidget {
+  final String contactId;
+
+  const ContactDetailPage({super.key, required this.contactId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final contactsState = ref.watch(contactsProvider);
+    final contact = contactsState.contacts
+        .where((c) => c.id == contactId)
+        .firstOrNull;
+
+    final bgColor = AppThemeColors.backgroundColor(context);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final primaryColor = const Color(0xFF2563EB);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Contact Details', style: TextStyle(color: textPrimary)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit_outlined, color: textPrimary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ContactFormPage(contact: contact),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: contact == null
+          ? const Center(child: LoadingWidget())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Contact Header
+                  CRMCard(
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: primaryColor.withOpacity(0.1),
+                          child: Text(
+                            contact.name.isNotEmpty
+                                ? contact.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          contact.name,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
+                          ),
+                        ),
+                        if (contact.designation != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            contact.designation!,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                        if (contact.company != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            contact.company!.name,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: primaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Quick Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.phone,
+                          label: 'Call',
+                          primaryColor: primaryColor,
+                          textPrimary: textPrimary,
+                          onTap: contact.mobile != null
+                              ? () => _makeCall(contact.mobile!)
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.email,
+                          label: 'Email',
+                          primaryColor: primaryColor,
+                          textPrimary: textPrimary,
+                          onTap: contact.email != null
+                              ? () => _sendEmail(contact.email!)
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Contact Info
+                  Text(
+                    'Contact Information',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  CRMCard(
+                    child: Column(
+                      children: [
+                        if (contact.email != null)
+                          _buildInfoRow(
+                            Icons.email_outlined,
+                            'Email',
+                            contact.email!,
+                            primaryColor,
+                            textPrimary,
+                            textSecondary,
+                          ),
+                        if (contact.mobile != null)
+                          _buildInfoRow(
+                            Icons.phone_outlined,
+                            'Mobile',
+                            contact.mobile!,
+                            primaryColor,
+                            textPrimary,
+                            textSecondary,
+                          ),
+                        if (contact.company != null)
+                          _buildInfoRow(
+                            Icons.business_outlined,
+                            'Company',
+                            contact.company!.name,
+                            primaryColor,
+                            textPrimary,
+                            textSecondary,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value,
+    Color primaryColor,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: primaryColor, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 12, color: textSecondary),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _makeCall(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _sendEmail(String email) async {
+    final uri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final Color primaryColor;
+  final Color textPrimary;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.primaryColor,
+    required this.textPrimary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: onTap != null ? primaryColor : Colors.grey,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ContactFormPage extends ConsumerStatefulWidget {
+  final Contact? contact;
+
+  const ContactFormPage({super.key, this.contact});
+
+  @override
+  ConsumerState<ContactFormPage> createState() => _ContactFormPageState();
+}
+
+class _ContactFormPageState extends ConsumerState<ContactFormPage> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _mobileController;
+  late TextEditingController _designationController;
+  String? _selectedCompanyId;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.contact?.name ?? '');
+    _emailController = TextEditingController(text: widget.contact?.email ?? '');
+    _mobileController = TextEditingController(
+      text: widget.contact?.mobile ?? '',
+    );
+    _designationController = TextEditingController(
+      text: widget.contact?.designation ?? '',
+    );
+    _selectedCompanyId = widget.contact?.companyId;
+
+    // Load companies if not loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(companiesProvider.notifier).loadCompanies();
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _mobileController.dispose();
+    _designationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveContact() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (widget.contact == null) {
+        // Create new contact
+        if (_selectedCompanyId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a company')),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        await ref
+            .read(contactsProvider.notifier)
+            .createContact(
+              name: _nameController.text,
+              companyId: _selectedCompanyId!,
+              email: _emailController.text.isEmpty
+                  ? null
+                  : _emailController.text,
+              mobile: _mobileController.text.isEmpty
+                  ? null
+                  : _mobileController.text,
+              designation: _designationController.text.isEmpty
+                  ? null
+                  : _designationController.text,
+            );
+      } else {
+        // Update existing contact
+        await ref
+            .read(contactsProvider.notifier)
+            .updateContact(
+              id: widget.contact!.id,
+              name: _nameController.text,
+              email: _emailController.text.isEmpty
+                  ? null
+                  : _emailController.text,
+              mobile: _mobileController.text.isEmpty
+                  ? null
+                  : _mobileController.text,
+              designation: _designationController.text.isEmpty
+                  ? null
+                  : _designationController.text,
+            );
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = AppThemeColors.backgroundColor(context);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final primaryColor = const Color(0xFF2563EB);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close, color: textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.contact == null ? 'New Contact' : 'Edit Contact',
+          style: TextStyle(color: textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isLoading ? null : _saveContact,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name Field (Required)
+                TextFormField(
+                  controller: _nameController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Name *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintText: 'Enter contact name',
+                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Company Dropdown (Required)
+                Consumer(
+                  builder: (context, ref, child) {
+                    final companiesState = ref.watch(companiesProvider);
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedCompanyId,
+                            decoration: InputDecoration(
+                              labelText: 'Company *',
+                              labelStyle: TextStyle(color: textSecondary),
+                              hintText: 'Select a company',
+                              hintStyle: TextStyle(
+                                color: textSecondary.withOpacity(0.6),
+                              ),
+                            ),
+                            dropdownColor: surfaceColor,
+                            items: companiesState.companies.map((company) {
+                              return DropdownMenuItem(
+                                value: company.id,
+                                child: Text(
+                                  company.name,
+                                  style: TextStyle(color: textPrimary),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedCompanyId = value;
+                              });
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Company is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: IconButton(
+                            onPressed: () async {
+                              // Load users first for the company form
+                              ref.read(usersProvider.notifier).loadUsers();
+                              // Navigate to create company
+                              final result = await Navigator.push<String>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CompaniesListPage(
+                                    openCreateDialog: true,
+                                  ),
+                                ),
+                              );
+                              // If a company was created, select it
+                              if (result != null && mounted) {
+                                setState(() {
+                                  _selectedCompanyId = result;
+                                });
+                              }
+                            },
+                            icon: Icon(
+                              Icons.add_circle_outline,
+                              color: primaryColor,
+                            ),
+                            tooltip: 'Add New Company',
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Designation Field
+                TextFormField(
+                  controller: _designationController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Designation',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintText: 'e.g. Manager, Director',
+                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Mobile Field
+                TextFormField(
+                  controller: _mobileController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Mobile',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintText: '+1234567890',
+                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+
+                // Email Field
+                TextFormField(
+                  controller: _emailController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintText: 'john@example.com',
+                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

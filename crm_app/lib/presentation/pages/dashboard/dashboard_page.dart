@@ -1,0 +1,595 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme_colors.dart';
+import '../../providers/sale_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../providers/contact_provider.dart';
+import '../../providers/company_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../widgets/kpi_card.dart';
+import '../../widgets/crm_card.dart';
+import '../../widgets/loading_widget.dart';
+import '../../widgets/error_widget.dart' as app_widgets;
+import '../sales/sale_detail_page.dart';
+import '../contacts/contact_detail_page.dart';
+import '../tasks/task_detail_page.dart';
+import '../tasks/tasks_list_page.dart';
+import '../companies/companies_list_page.dart';
+
+class DashboardPage extends ConsumerStatefulWidget {
+  const DashboardPage({super.key});
+
+  @override
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await Future.wait([
+      ref.read(salesProvider.notifier).loadSales(),
+      ref.read(tasksProvider.notifier).loadTasks(),
+      ref.read(contactsProvider.notifier).loadContacts(),
+      ref.read(companiesProvider.notifier).loadCompanies(),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final salesState = ref.watch(salesProvider);
+    final tasksState = ref.watch(tasksProvider);
+    final contactsState = ref.watch(contactsProvider);
+    final companiesState = ref.watch(companiesProvider);
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+
+    final bgColor = AppThemeColors.backgroundColor(context);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final textTertiary = AppThemeColors.textTertiaryColor(context);
+    final borderColor = AppThemeColors.borderColor(context);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          child: CustomScrollView(
+            slivers: [
+              // App Bar
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Welcome back!',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Dashboard',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: surfaceColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: GestureDetector(
+                              onTap: () {
+                                ref.read(themeProvider.notifier).toggleTheme();
+                              },
+                              child: Icon(
+                                isDarkMode
+                                    ? Icons.light_mode_outlined
+                                    : Icons.dark_mode_outlined,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // KPI Cards
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Overview',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height:
+                            (MediaQuery.of(context).size.width - 40) /
+                                2 /
+                                1.4 *
+                                2 +
+                            40,
+                        child: GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 1.4,
+                          children: [
+                            KPICard(
+                              title: 'Total Deals',
+                              value: '${salesState.sales.length}',
+                              icon: Icons.trending_up,
+                              iconColor: const Color(0xFF2563EB),
+                            ),
+                            KPICard(
+                              title: 'Closed Deals',
+                              value: '${salesState.closed.length}',
+                              icon: Icons.check_circle_outline,
+                              iconColor: const Color(0xFF10B981),
+                            ),
+                            KPICard(
+                              title: 'Pending Tasks',
+                              value:
+                                  '${tasksState.pendingTasks.length + tasksState.inProgressTasks.length}',
+                              icon: Icons.pending_actions,
+                              iconColor: const Color(0xFFF59E0B),
+                            ),
+                            KPICard(
+                              title: 'Contacts',
+                              value: '${contactsState.contacts.length}',
+                              icon: Icons.people_outline,
+                              iconColor: const Color(0xFF8B5CF6),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // Quick Actions
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _QuickActionButton(
+                              icon: Icons.person_add_outlined,
+                              label: 'Add Lead',
+                              color: const Color(0xFF2563EB),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SaleFormPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _QuickActionButton(
+                              icon: Icons.people_outline,
+                              label: 'Add Contact',
+                              color: const Color(0xFF8B5CF6),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ContactFormPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _QuickActionButton(
+                              icon: Icons.task_alt,
+                              label: 'Add Task',
+                              color: const Color(0xFFF59E0B),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const TaskFormPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // Recent Tasks
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Recent Tasks',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const TasksListPage(),
+                                ),
+                              );
+                            },
+                            child: const Text('View All'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Tasks List
+              if (tasksState.isLoading)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: LoadingWidget(),
+                  ),
+                )
+              else if (tasksState.tasks.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: app_widgets.EmptyStateWidget(
+                      title: 'No tasks yet',
+                      subtitle: 'Create your first task to get started',
+                      icon: Icons.task_alt,
+                    ),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index >= 5) return null;
+                      final task = tasksState.tasks[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 6,
+                        ),
+                        child: CRMCard(
+                          onTap: () {},
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: task.status == 'completed'
+                                      ? const Color(0xFF10B981)
+                                      : task.status == 'in_progress'
+                                      ? const Color(0xFF2563EB)
+                                      : const Color(0xFFF59E0B),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      task.title,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      task.company?.name ?? 'No company',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: task.status == 'completed'
+                                      ? const Color(0xFF10B981).withOpacity(0.1)
+                                      : task.status == 'in_progress'
+                                      ? const Color(0xFF2563EB).withOpacity(0.1)
+                                      : const Color(
+                                          0xFFF59E0B,
+                                        ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  task.status.replaceAll('_', ' '),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: task.status == 'completed'
+                                        ? const Color(0xFF10B981)
+                                        : task.status == 'in_progress'
+                                        ? const Color(0xFF2563EB)
+                                        : const Color(0xFFF59E0B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: tasksState.tasks.length > 5
+                        ? 5
+                        : tasksState.tasks.length,
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // Recent Companies
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Recent Companies',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const CompaniesListPage(),
+                                ),
+                              );
+                            },
+                            child: const Text('View All'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Companies List
+              if (companiesState.isLoading)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: LoadingWidget(),
+                  ),
+                )
+              else if (companiesState.companies.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: app_widgets.EmptyStateWidget(
+                      title: 'No companies yet',
+                      subtitle: 'Add your first company',
+                      icon: Icons.business_outlined,
+                    ),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index >= 3) return null;
+                      final company = companiesState.companies[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 6,
+                        ),
+                        child: CRMCard(
+                          onTap: () {},
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF2563EB,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    company.name.isNotEmpty
+                                        ? company.name[0].toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                      color: Color(0xFF2563EB),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      company.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      [company.location, company.country]
+                                          .where(
+                                            (e) => e != null && e.isNotEmpty,
+                                          )
+                                          .join(', '),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right, color: textTertiary),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: companiesState.companies.length > 3
+                        ? 3
+                        : companiesState.companies.length,
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,52 @@
+import 'user_model.dart';
+
+class Company {
+  final String id;
+  final String name;
+  final String? location;
+  final String? country;
+  final String? kamUserId;
+  final User? kamUser;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  Company({
+    required this.id,
+    required this.name,
+    this.location,
+    this.country,
+    this.kamUserId,
+    this.kamUser,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory Company.fromJson(Map<String, dynamic> json) {
+    return Company(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? '',
+      location: json['location'],
+      country: json['country'],
+      kamUserId: json['kamUserId']?.toString(),
+      kamUser: json['kamUser'] != null ? User.fromJson(json['kamUser']) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'location': location,
+      'country': country,
+      'kamUserId': kamUserId,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
+  }
+}

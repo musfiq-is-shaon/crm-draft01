@@ -1,0 +1,596 @@
+{
+  "info": {
+    "name": "CRM API",
+    "description": "Backend API for CRM (Flask). Set {{baseUrl}} to your backend (e.g. http://localhost:5000). Use **Login** to get a token; {{token}} is set automatically from the login response for use in auth-required requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "companyId", "value": "" },
+    { "key": "contactId", "value": "" },
+    { "key": "taskId", "value": "" },
+    { "key": "saleId", "value": "" },
+    { "key": "activityId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j && j.token) { pm.collectionVariables.set('token', j.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@apptriangle.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Returns user, token, expiresAt. Token is saved to collection variable {{token}}."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Revoke current token (optional)."
+          }
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/change-password",
+            "description": "Logged-in user changes own password. Requires Bearer token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/users",
+            "description": "Returns all users (no auth enforced on backend)."
+          }
+        },
+        {
+          "name": "Get user by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "Replace {{userId}} with actual user ID."
+          }
+        },
+        {
+          "name": "Update me (profile)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Name\",\n  \"phone\": \"+1234567890\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/me",
+            "description": "Logged-in user updates own name/phone. Requires Bearer."
+          }
+        },
+        {
+          "name": "Create user (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New User\",\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"\",\n  \"role\": \"user\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users",
+            "description": "Admin only. Sends welcome email. role: admin | user."
+          }
+        },
+        {
+          "name": "Update user (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\",\n  \"phone\": \"\",\n  \"role\": \"user\",\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "Admin only. Replace {{userId}}."
+          }
+        },
+        {
+          "name": "Set user password (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/password",
+            "description": "Admin only. Replace {{userId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "List companies",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/companies?search=&country=&kamUserId=",
+            "description": "Query params: search, country, kamUserId (optional)."
+          }
+        },
+        {
+          "name": "Create company",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Inc\",\n  \"location\": \"New York\",\n  \"country\": \"United States\",\n  \"kamUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/companies",
+            "description": "kamUserId is required (KAM user ID)."
+          }
+        },
+        {
+          "name": "Get company",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}",
+            "description": "Replace {{companyId}}."
+          }
+        },
+        {
+          "name": "Update company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Inc\",\n  \"location\": \"Boston\",\n  \"country\": \"United States\",\n  \"kamUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/companies/{{companyId}}",
+            "description": "Replace {{companyId}}."
+          }
+        },
+        {
+          "name": "Delete company",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}",
+            "description": "Replace {{companyId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contacts",
+      "item": [
+        {
+          "name": "List contacts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/contacts?companyId=&search=",
+            "description": "Query params: companyId, search (optional)."
+          }
+        },
+        {
+          "name": "Create contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"companyId\": \"<company-id>\",\n  \"designation\": \"Manager\",\n  \"mobile\": \"+1234567890\",\n  \"email\": \"john@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/contacts",
+            "description": "name, companyId, mobile required."
+          }
+        },
+        {
+          "name": "Get contact",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/contacts/{{contactId}}",
+            "description": "Replace {{contactId}}."
+          }
+        },
+        {
+          "name": "Update contact",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"companyId\": \"<company-id>\",\n  \"designation\": \"Director\",\n  \"mobile\": \"+1234567890\",\n  \"email\": \"john@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/contacts/{{contactId}}",
+            "description": "Replace {{contactId}}."
+          }
+        },
+        {
+          "name": "Delete contact",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/contacts/{{contactId}}",
+            "description": "Replace {{contactId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "List tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/tasks?status=&companyId=&assignToUserId=&assignByUserId=&search=",
+            "description": "Query params: status, companyId, assignToUserId, assignByUserId, search (optional)."
+          }
+        },
+        {
+          "name": "Create task",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Follow up call\",\n  \"note\": \"Optional note\",\n  \"companyId\": \"<company-id>\",\n  \"dueDatetime\": \"2025-12-31T14:00:00\",\n  \"assignByUserId\": \"<user-id>\",\n  \"assignToUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/tasks",
+            "description": "title, companyId, dueDatetime required. dueDatetime: ISO 8601."
+          }
+        },
+        {
+          "name": "Get task",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Replace {{taskId}}."
+          }
+        },
+        {
+          "name": "Update task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated title\",\n  \"note\": \"Note\",\n  \"companyId\": \"<company-id>\",\n  \"dueDatetime\": \"2025-12-31T15:00:00\",\n  \"assignByUserId\": \"<user-id>\",\n  \"assignToUserId\": \"<user-id>\",\n  \"actorUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Replace {{taskId}}. actorUserId optional for activity log."
+          }
+        },
+        {
+          "name": "Change task status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"note\": \"Optional note\",\n  \"actorUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/status",
+            "description": "Replace {{taskId}}. status: pending | in_progress | completed | cancelled."
+          }
+        },
+        {
+          "name": "Get task logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/logs",
+            "description": "Replace {{taskId}}. Returns activity logs."
+          }
+        },
+        {
+          "name": "Delete task",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Replace {{taskId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sales",
+      "item": [
+        {
+          "name": "List sales",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/sales?status=&companyId=&category=&createdByUserId=&search=",
+            "description": "Query params: status, companyId, category, createdByUserId, search (optional)."
+          }
+        },
+        {
+          "name": "Create sale",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"<company-id>\",\n  \"prospect\": \"Jane Smith\",\n  \"category\": \"warm\",\n  \"expectedClosingDate\": \"2025-12-31\",\n  \"expectedRevenue\": 50000,\n  \"status\": \"lead\",\n  \"createdByUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/sales",
+            "description": "companyId, prospect, expectedClosingDate required. category: hot|warm|cold. status: lead|prospect|negotiation|closed|disqualified."
+          }
+        },
+        {
+          "name": "Get sale",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/sales/{{saleId}}",
+            "description": "Replace {{saleId}}."
+          }
+        },
+        {
+          "name": "Update sale",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prospect\": \"Jane Smith\",\n  \"companyId\": \"<company-id>\",\n  \"category\": \"hot\",\n  \"expectedClosingDate\": \"2025-12-31\",\n  \"expectedRevenue\": 75000\n}"
+            },
+            "url": "{{baseUrl}}/api/sales/{{saleId}}",
+            "description": "Replace {{saleId}}."
+          }
+        },
+        {
+          "name": "Change sale status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"prospect\",\n  \"note\": \"Moved to prospect\",\n  \"changedByUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/sales/{{saleId}}/status",
+            "description": "Replace {{saleId}}. Creates status log."
+          }
+        },
+        {
+          "name": "Get sale logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/sales/{{saleId}}/logs",
+            "description": "Replace {{saleId}}. Returns status change logs."
+          }
+        },
+        {
+          "name": "List sale activities",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/sales/{{saleId}}/activities",
+            "description": "Replace {{saleId}}."
+          }
+        },
+        {
+          "name": "Create sale activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Call with prospect\",\n  \"note\": \"Discussed pricing\",\n  \"date\": \"2025-12-15\",\n  \"createdByUserId\": \"<user-id>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/sales/{{saleId}}/activities",
+            "description": "Replace {{saleId}}. title and date required."
+          }
+        },
+        {
+          "name": "Update sale activity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated title\",\n  \"note\": \"Updated note\",\n  \"date\": \"2025-12-16\"\n}"
+            },
+            "url": "{{baseUrl}}/api/sales/{{saleId}}/activities/{{activityId}}",
+            "description": "Replace {{saleId}} and {{activityId}}."
+          }
+        },
+        {
+          "name": "Delete sale activity",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/sales/{{saleId}}/activities/{{activityId}}",
+            "description": "Replace {{saleId}} and {{activityId}}."
+          }
+        },
+        {
+          "name": "Delete sale",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/sales/{{saleId}}",
+            "description": "Replace {{saleId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Status config",
+      "item": [
+        {
+          "name": "Get status config",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/status-config",
+            "description": "Returns taskStatuses, salesCategories, salesStatuses. No auth required."
+          }
+        },
+        {
+          "name": "Add status (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"group\": \"taskStatuses\",\n  \"value\": \"on_hold\"\n}"
+            },
+            "url": "{{baseUrl}}/api/status-config",
+            "description": "Admin only. group: taskStatuses | salesCategories | salesStatuses. value stored lower-case, spaces→underscores."
+          }
+        },
+        {
+          "name": "Remove status (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"group\": \"taskStatuses\",\n  \"value\": \"on_hold\"\n}"
+            },
+            "url": "{{baseUrl}}/api/status-config",
+            "description": "Admin only. Must leave at least one value per group."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Company profile",
+      "item": [
+        {
+          "name": "Get company profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/company-profile",
+            "description": "Single org profile for Settings. No auth required for GET."
+          }
+        },
+        {
+          "name": "Update company profile (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Company\",\n  \"email\": \"contact@company.com\",\n  \"phone\": \"\",\n  \"website\": \"\",\n  \"address\": \"\",\n  \"city\": \"\",\n  \"country\": \"\",\n  \"industry\": \"\",\n  \"taxId\": \"\",\n  \"description\": \"\",\n  \"logo\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/company-profile",
+            "description": "Admin only. All fields optional. logo: base64 data URL or null."
+          }
+        }
+      ]
+    }
+  ]
+}
