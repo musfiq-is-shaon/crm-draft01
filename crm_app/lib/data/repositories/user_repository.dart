@@ -22,7 +22,7 @@ class UserRepository {
   Future<User> updateMe({String? name, String? phone}) async {
     final response = await _apiClient.patch(
       AppConstants.usersMe,
-      data: {'name': ?name, 'phone': ?phone},
+      data: {'name': name, 'phone': phone},
     );
     return User.fromJson(response.data);
   }
@@ -40,8 +40,8 @@ class UserRepository {
         'name': name,
         'email': email,
         'password': password,
-        'phone': ?phone,
-        'role': ?role,
+        'phone': phone,
+        'role': role,
       },
     );
     return User.fromJson(response.data);
@@ -58,11 +58,11 @@ class UserRepository {
     final response = await _apiClient.put(
       '${AppConstants.users}/$id',
       data: {
-        'name': ?name,
-        'email': ?email,
-        'phone': ?phone,
-        'role': ?role,
-        'isActive': ?isActive,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'role': role,
+        'isActive': isActive,
       },
     );
     return User.fromJson(response.data);

@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task_model.dart';
 import '../../data/models/company_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/company_repository.dart';
+import '../../data/repositories/user_repository.dart';
 import 'auth_provider.dart';
 
 class TasksState {
@@ -140,17 +142,21 @@ final userFilteredCompletedTasksProvider = Provider<List<Task>>((ref) {
 class TasksNotifier extends StateNotifier<TasksState> {
   final TaskRepository _taskRepository;
   final CompanyRepository _companyRepository;
+  final UserRepository _userRepository;
 
-  TasksNotifier(this._taskRepository, this._companyRepository)
-    : super(const TasksState());
+  TasksNotifier(
+    this._taskRepository,
+    this._companyRepository,
+    this._userRepository,
+  ) : super(const TasksState());
 
   Future<void> loadTasks() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final tasks = await _taskRepository.getTasks();
 
-      // Load company with KAM data for each task
-      final tasksWithCompany = await Future.wait(
+      // Load company, assignToUser, and assignByUser data for each task
+      final tasksWithDetails = await Future.wait(
         tasks.map((task) async {
           Company? company;
           if (task.companyId != null) {
@@ -163,6 +169,33 @@ class TasksNotifier extends StateNotifier<TasksState> {
               company = task.company;
             }
           }
+
+          // Fetch assignToUser details
+          User? assignToUser;
+          if (task.assignToUserId != null) {
+            try {
+              assignToUser = await _userRepository.getUserById(
+                task.assignToUserId!,
+              );
+            } catch (e) {
+              // Ignore - use existing user data if available
+              assignToUser = task.assignToUser;
+            }
+          }
+
+          // Fetch assignByUser details
+          User? assignByUser;
+          if (task.assignByUserId != null) {
+            try {
+              assignByUser = await _userRepository.getUserById(
+                task.assignByUserId!,
+              );
+            } catch (e) {
+              // Ignore - use existing user data if available
+              assignByUser = task.assignByUser;
+            }
+          }
+
           return Task(
             id: task.id,
             title: task.title,
@@ -171,9 +204,9 @@ class TasksNotifier extends StateNotifier<TasksState> {
             company: company,
             dueDatetime: task.dueDatetime,
             assignByUserId: task.assignByUserId,
-            assignByUser: task.assignByUser,
+            assignByUser: assignByUser,
             assignToUserId: task.assignToUserId,
-            assignToUser: task.assignToUser,
+            assignToUser: assignToUser,
             status: task.status,
             actorUserId: task.actorUserId,
             createdAt: task.createdAt,
@@ -182,7 +215,7 @@ class TasksNotifier extends StateNotifier<TasksState> {
         }),
       );
 
-      state = state.copyWith(tasks: tasksWithCompany, isLoading: false);
+      state = state.copyWith(tasks: tasksWithDetails, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -222,6 +255,53 @@ class TasksNotifier extends StateNotifier<TasksState> {
     );
   }
 
+  /// Helper method to enrich a task with user and company details
+  Future<Task> _enrichTaskWithDetails(Task task) async {
+    Company? company;
+    if (task.companyId != null) {
+      try {
+        company = await _companyRepository.getCompanyById(task.companyId!);
+      } catch (e) {
+        company = task.company;
+      }
+    }
+
+    User? assignToUser;
+    if (task.assignToUserId != null) {
+      try {
+        assignToUser = await _userRepository.getUserById(task.assignToUserId!);
+      } catch (e) {
+        assignToUser = task.assignToUser;
+      }
+    }
+
+    User? assignByUser;
+    if (task.assignByUserId != null) {
+      try {
+        assignByUser = await _userRepository.getUserById(task.assignByUserId!);
+      } catch (e) {
+        assignByUser = task.assignByUser;
+      }
+    }
+
+    return Task(
+      id: task.id,
+      title: task.title,
+      note: task.note,
+      companyId: task.companyId,
+      company: company,
+      dueDatetime: task.dueDatetime,
+      assignByUserId: task.assignByUserId,
+      assignByUser: assignByUser,
+      assignToUserId: task.assignToUserId,
+      assignToUser: assignToUser,
+      status: task.status,
+      actorUserId: task.actorUserId,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    );
+  }
+
   Future<void> createTask({
     required String title,
     String? note,
@@ -229,6 +309,7 @@ class TasksNotifier extends StateNotifier<TasksState> {
     required DateTime dueDatetime,
     String? assignByUserId,
     String? assignToUserId,
+    String? actorUserId,
   }) async {
     try {
       final task = await _taskRepository.createTask(
@@ -238,8 +319,11 @@ class TasksNotifier extends StateNotifier<TasksState> {
         dueDatetime: dueDatetime,
         assignByUserId: assignByUserId,
         assignToUserId: assignToUserId,
+        actorUserId: actorUserId,
       );
-      state = state.copyWith(tasks: [task, ...state.tasks]);
+      // Enrich task with user and company details
+      final enrichedTask = await _enrichTaskWithDetails(task);
+      state = state.copyWith(tasks: [enrichedTask, ...state.tasks]);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -264,8 +348,10 @@ class TasksNotifier extends StateNotifier<TasksState> {
         assignByUserId: assignByUserId,
         assignToUserId: assignToUserId,
       );
+      // Enrich task with user and company details
+      final enrichedTask = await _enrichTaskWithDetails(task);
       final updatedTasks = state.tasks
-          .map((t) => t.id == id ? task : t)
+          .map((t) => t.id == id ? enrichedTask : t)
           .toList();
       state = state.copyWith(tasks: updatedTasks);
     } catch (e) {
@@ -307,7 +393,8 @@ class TasksNotifier extends StateNotifier<TasksState> {
 final tasksProvider = StateNotifierProvider<TasksNotifier, TasksState>((ref) {
   final taskRepository = ref.watch(taskRepositoryProvider);
   final companyRepository = ref.watch(companyRepositoryProvider);
-  return TasksNotifier(taskRepository, companyRepository);
+  final userRepository = ref.watch(userRepositoryProvider);
+  return TasksNotifier(taskRepository, companyRepository, userRepository);
 });
 
 final taskDetailProvider = FutureProvider.family<Task, String>((ref, id) async {

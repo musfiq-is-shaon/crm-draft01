@@ -38,14 +38,16 @@ class CompanyRepository {
     String? location,
     String? country,
     required String kamUserId,
+    required String currencyId,
   }) async {
     final response = await _apiClient.post(
       AppConstants.companies,
       data: {
         'name': name,
         'kamUserId': kamUserId,
-        'location': ?location,
-        'country': ?country,
+        'currencyId': currencyId,
+        'location': location,
+        'country': country,
       },
     );
     return Company.fromJson(response.data);
@@ -61,10 +63,10 @@ class CompanyRepository {
     final response = await _apiClient.put(
       '${AppConstants.companies}/$id',
       data: {
-        'name': ?name,
-        'location': ?location,
-        'country': ?country,
-        'kamUserId': ?kamUserId,
+        'name': name,
+        'location': location,
+        'country': country,
+        'kamUserId': kamUserId,
       },
     );
     return Company.fromJson(response.data);

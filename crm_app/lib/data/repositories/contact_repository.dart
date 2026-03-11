@@ -40,9 +40,9 @@ class ContactRepository {
       data: {
         'name': name,
         'companyId': companyId,
-        'designation': ?designation,
-        'mobile': ?mobile,
-        'email': ?email,
+        'designation': designation,
+        'mobile': mobile,
+        'email': email,
       },
     );
     return Contact.fromJson(response.data);
@@ -59,11 +59,11 @@ class ContactRepository {
     final response = await _apiClient.put(
       '${AppConstants.contacts}/$id',
       data: {
-        'name': ?name,
-        'companyId': ?companyId,
-        'designation': ?designation,
-        'mobile': ?mobile,
-        'email': ?email,
+        'name': name,
+        'companyId': companyId,
+        'designation': designation,
+        'mobile': mobile,
+        'email': email,
       },
     );
     return Contact.fromJson(response.data);

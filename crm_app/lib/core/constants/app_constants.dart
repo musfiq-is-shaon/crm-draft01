@@ -18,6 +18,7 @@ class AppConstants {
   static const String sales = '/api/sales';
   static const String statusConfig = '/api/status-config';
   static const String companyProfile = '/api/company-profile';
+  static const String currencies = '/api/currencies';
 
   // Storage Keys
   static const String tokenKey = 'auth_token';

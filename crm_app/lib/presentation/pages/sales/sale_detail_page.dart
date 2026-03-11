@@ -6,6 +6,7 @@ import '../../providers/sale_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../../data/repositories/sale_repository.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
@@ -599,6 +600,8 @@ class SaleDetailPage extends ConsumerWidget {
                   await ref
                       .read(salesProvider.notifier)
                       .changeSaleStatus(id: sale.id, status: status);
+                  // Invalidate the sale detail provider to refresh the UI with new status
+                  ref.invalidate(saleDetailProvider(sale.id));
                 },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -652,6 +655,8 @@ class SaleDetailPage extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               await ref.read(salesProvider.notifier).deleteSale(sale.id);
+              // Invalidate the sales provider to refresh the list
+              ref.invalidate(salesProvider);
               if (context.mounted) {
                 Navigator.pop(context);
               }
@@ -707,6 +712,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companiesProvider.notifier).loadCompanies();
       ref.read(usersProvider.notifier).loadUsers();
+      ref.read(currenciesProvider.notifier).loadCurrencies();
     });
   }
 
@@ -720,6 +726,8 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
     final usersState = ref.read(usersProvider);
+    final currenciesState = ref.read(currenciesProvider);
+    final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
@@ -729,7 +737,15 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final countryController = TextEditingController();
-    String? selectedKamUserId;
+
+    // Set current user as default KAM
+    String? selectedKamUserId = authState.user?.id;
+
+    // Set default currency if available
+    String? selectedCurrencyId;
+    if (currenciesState.currencies.isNotEmpty) {
+      selectedCurrencyId = currenciesState.currencies.first.id;
+    }
 
     final result = await showDialog<String>(
       context: context,
@@ -753,6 +769,32 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                       borderSide: BorderSide(color: borderColor),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                // Currency Dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedCurrencyId,
+                  decoration: InputDecoration(
+                    labelText: 'Currency *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  items: currenciesState.currencies.map((currency) {
+                    return DropdownMenuItem(
+                      value: currency.id,
+                      child: Text('${currency.code} - ${currency.name}'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedCurrencyId = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -785,38 +827,6 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedKamUserId,
-                  decoration: InputDecoration(
-                    labelText: 'KAM (Key Account Manager)',
-                    labelStyle: TextStyle(color: textSecondary),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                  ),
-                  dropdownColor: surfaceColor,
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Select KAM'),
-                    ),
-                    ...usersState.users.map(
-                      (user) => DropdownMenuItem(
-                        value: user.id,
-                        child: Text(
-                          user.name,
-                          style: TextStyle(color: textPrimary),
-                        ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() => selectedKamUserId = value);
-                  },
-                ),
               ],
             ),
           ),
@@ -827,7 +837,8 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
             ),
             TextButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty) {
+                if (nameController.text.isNotEmpty &&
+                    selectedCurrencyId != null) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -839,6 +850,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                             ? countryController.text
                             : null,
                         kamUserId: selectedKamUserId ?? '',
+                        currencyId: selectedCurrencyId!,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;
@@ -879,7 +891,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
           return;
         }
 
-        // Get the current user ID to set as KAM
+        // Get the current user ID
         final currentUserId = ref.read(currentUserIdProvider);
 
         // If current user exists, set them as the KAM of the selected company
@@ -896,6 +908,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
           }
         }
 
+        // Create the deal with current user as createdByUserId
         await ref
             .read(salesProvider.notifier)
             .createSale(
@@ -907,6 +920,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
               category: _category,
               expectedRevenue: double.tryParse(_revenueController.text),
               status: _status,
+              createdByUserId: currentUserId,
             );
       } else {
         // Update existing sale
@@ -1122,7 +1136,33 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: borderColor),
                     ),
+                    suffixIcon: Icon(
+                      Icons.calendar_today,
+                      color: textSecondary,
+                    ),
                   ),
+                  readOnly: true,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _closingDateController.text.isNotEmpty
+                          ? DateTime.tryParse(_closingDateController.text) ??
+                                DateTime.now()
+                          : DateTime.now(),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 5),
+                      ),
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _closingDateController.text =
+                            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                      });
+                    }
+                  },
                 ),
                 const SizedBox(height: 20),
 

@@ -8,6 +8,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
@@ -289,6 +290,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companiesProvider.notifier).loadCompanies();
       ref.read(usersProvider.notifier).loadUsers();
+      ref.read(currenciesProvider.notifier).loadCurrencies();
 
       // For new tasks, set the current user as default "Assigned By"
       if (widget.task == null && !_initialized) {
@@ -351,6 +353,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
     final usersState = ref.read(usersProvider);
+    final currenciesState = ref.read(currenciesProvider);
+    final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
@@ -360,7 +364,15 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final countryController = TextEditingController();
-    String? selectedKamUserId;
+
+    // Set current user as default KAM
+    String? selectedKamUserId = authState.user?.id;
+
+    // Set default currency if available
+    String? selectedCurrencyId;
+    if (currenciesState.currencies.isNotEmpty) {
+      selectedCurrencyId = currenciesState.currencies.first.id;
+    }
 
     final result = await showDialog<String>(
       context: context,
@@ -384,6 +396,32 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                       borderSide: BorderSide(color: borderColor),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                // Currency Dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedCurrencyId,
+                  decoration: InputDecoration(
+                    labelText: 'Currency *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  items: currenciesState.currencies.map((currency) {
+                    return DropdownMenuItem(
+                      value: currency.id,
+                      child: Text('${currency.code} - ${currency.name}'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedCurrencyId = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -416,38 +454,6 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedKamUserId,
-                  decoration: InputDecoration(
-                    labelText: 'KAM (Key Account Manager)',
-                    labelStyle: TextStyle(color: textSecondary),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                  ),
-                  dropdownColor: surfaceColor,
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Select KAM'),
-                    ),
-                    ...usersState.users.map(
-                      (user) => DropdownMenuItem(
-                        value: user.id,
-                        child: Text(
-                          user.name,
-                          style: TextStyle(color: textPrimary),
-                        ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() => selectedKamUserId = value);
-                  },
-                ),
               ],
             ),
           ),
@@ -458,7 +464,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
             ),
             TextButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty) {
+                if (nameController.text.isNotEmpty &&
+                    selectedCurrencyId != null) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -470,6 +477,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                             ? countryController.text
                             : null,
                         kamUserId: selectedKamUserId ?? '',
+                        currencyId: selectedCurrencyId!,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;
@@ -504,6 +512,13 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
       final authState = ref.read(authProvider);
       final currentUserId = authState.user?.id;
 
+      // Debug: Show auth state
+      debugPrint('=== AUTH DEBUG ===');
+      debugPrint('authState.user: ${authState.user}');
+      debugPrint('authState.user?.id: $currentUserId');
+      debugPrint('authState.user?.name: ${authState.user?.name}');
+      debugPrint('==================');
+
       // Use selected Assign By user, or fall back to current user
       final assignByUserId = _selectedAssignByUserId ?? currentUserId;
 
@@ -534,7 +549,19 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
               note: _noteController.text.isEmpty ? null : _noteController.text,
               assignByUserId: assignByUserId,
               assignToUserId: _selectedAssignToUserId,
+              actorUserId: currentUserId,
             );
+
+        // Debug: Print what was sent (remove in production)
+        debugPrint('=== TASK CREATE DEBUG ===');
+        debugPrint('Title: ${_titleController.text}');
+        debugPrint('CompanyId: $_selectedCompanyId');
+        debugPrint('DueDatetime: $_selectedDueDate');
+        debugPrint('Note: ${_noteController.text}');
+        debugPrint('assignByUserId: $assignByUserId');
+        debugPrint('assignToUserId: $_selectedAssignToUserId');
+        debugPrint('actorUserId: $currentUserId');
+        debugPrint('===========================');
       } else {
         // Update existing task
         await ref
@@ -554,9 +581,24 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
       }
     } catch (e) {
       if (mounted) {
+        // Parse the error message for better user feedback
+        String errorMessage = 'Error: $e';
+
+        // Check if it's a validation error or specific error
+        if (e.toString().contains('ValidationException') ||
+            e.toString().contains('422')) {
+          errorMessage = 'Validation error. Please check your input.';
+        } else if (e.toString().contains('401')) {
+          errorMessage = 'Authentication error. Please log in again.';
+        } else if (e.toString().contains('403')) {
+          errorMessage = 'You do not have permission to perform this action.';
+        } else if (e.toString().contains('500')) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
@@ -709,6 +751,9 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     textColor: textPrimary,
                     hintColor: textSecondary,
                     onChanged: (user) {
+                      debugPrint('=== DROPDOWN ONCHANGE DEBUG ===');
+                      debugPrint('Selected user: ${user?.id} - ${user?.name}');
+                      debugPrint('================================');
                       setState(() {
                         _selectedAssignToUserId = user?.id;
                       });
@@ -718,15 +763,21 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Assign By User Dropdown (Optional)
+              // Assign By User Dropdown (Optional - Admin only)
               Consumer(
                 builder: (context, ref, child) {
+                  final isAdmin = ref.watch(isAdminProvider);
                   final usersState = ref.watch(usersProvider);
                   final selectedUser = _selectedAssignByUserId != null
                       ? usersState.users
                             .where((u) => u.id == _selectedAssignByUserId)
                             .firstOrNull
                       : null;
+
+                  // Only show Assigned By dropdown for admins
+                  if (!isAdmin) {
+                    return const SizedBox.shrink();
+                  }
 
                   return SearchableDropdown<User>(
                     items: usersState.users,

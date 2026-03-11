@@ -1,4 +1,5 @@
 import 'user_model.dart';
+import 'currency_model.dart';
 
 class Company {
   final String id;
@@ -7,6 +8,8 @@ class Company {
   final String? country;
   final String? kamUserId;
   final User? kamUser;
+  final String? currencyId;
+  final Currency? currency;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -17,6 +20,8 @@ class Company {
     this.country,
     this.kamUserId,
     this.kamUser,
+    this.currencyId,
+    this.currency,
     this.createdAt,
     this.updatedAt,
   });
@@ -29,6 +34,10 @@ class Company {
       country: json['country'],
       kamUserId: json['kamUserId']?.toString(),
       kamUser: json['kamUser'] != null ? User.fromJson(json['kamUser']) : null,
+      currencyId: json['currencyId']?.toString(),
+      currency: json['currency'] != null
+          ? Currency.fromJson(json['currency'])
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -45,6 +54,7 @@ class Company {
       'location': location,
       'country': country,
       'kamUserId': kamUserId,
+      'currencyId': currencyId,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };

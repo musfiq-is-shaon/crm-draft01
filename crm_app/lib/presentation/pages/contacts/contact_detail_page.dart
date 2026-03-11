@@ -6,6 +6,8 @@ import '../../../data/models/contact_model.dart';
 import '../../providers/contact_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/searchable_dropdown.dart';
@@ -377,6 +379,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
     // Load companies if not loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companiesProvider.notifier).loadCompanies();
+      ref.read(currenciesProvider.notifier).loadCurrencies();
     });
   }
 
@@ -391,6 +394,8 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
     final usersState = ref.read(usersProvider);
+    final currenciesState = ref.read(currenciesProvider);
+    final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
@@ -400,7 +405,15 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final countryController = TextEditingController();
-    String? selectedKamUserId;
+
+    // Set current user as default KAM
+    String? selectedKamUserId = authState.user?.id;
+
+    // Set default currency if available
+    String? selectedCurrencyId;
+    if (currenciesState.currencies.isNotEmpty) {
+      selectedCurrencyId = currenciesState.currencies.first.id;
+    }
 
     final result = await showDialog<String>(
       context: context,
@@ -424,6 +437,32 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                       borderSide: BorderSide(color: borderColor),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                // Currency Dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedCurrencyId,
+                  decoration: InputDecoration(
+                    labelText: 'Currency *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  items: currenciesState.currencies.map((currency) {
+                    return DropdownMenuItem(
+                      value: currency.id,
+                      child: Text('${currency.code} - ${currency.name}'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedCurrencyId = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -498,7 +537,8 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
             ),
             TextButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty) {
+                if (nameController.text.isNotEmpty &&
+                    selectedCurrencyId != null) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -510,6 +550,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                             ? countryController.text
                             : null,
                         kamUserId: selectedKamUserId ?? '',
+                        currencyId: selectedCurrencyId!,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;

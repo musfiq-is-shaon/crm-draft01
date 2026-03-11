@@ -254,8 +254,12 @@ class SalesNotifier extends StateNotifier<SalesState> {
     String? category,
     double? expectedRevenue,
     String? status,
+    String? createdByUserId,
   }) async {
     try {
+      // Get current user if createdByUserId is not provided
+      final userId = createdByUserId;
+
       final sale = await _saleRepository.createSale(
         companyId: companyId,
         prospect: prospect,
@@ -263,6 +267,7 @@ class SalesNotifier extends StateNotifier<SalesState> {
         category: category,
         expectedRevenue: expectedRevenue,
         status: status,
+        createdByUserId: userId,
       );
 
       // Get the company details with KAM

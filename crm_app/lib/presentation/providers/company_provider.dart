@@ -150,6 +150,7 @@ class CompaniesNotifier extends StateNotifier<CompaniesState> {
     String? location,
     String? country,
     required String kamUserId,
+    required String currencyId,
   }) async {
     try {
       final company = await _companyRepository.createCompany(
@@ -157,6 +158,7 @@ class CompaniesNotifier extends StateNotifier<CompaniesState> {
         location: location,
         country: country,
         kamUserId: kamUserId,
+        currencyId: currencyId,
       );
       state = state.copyWith(companies: [company, ...state.companies]);
     } catch (e) {

@@ -58,10 +58,10 @@ class SaleRepository {
         'expectedClosingDate': expectedClosingDate.toIso8601String().split(
           'T',
         )[0],
-        'category': ?category,
-        'expectedRevenue': ?expectedRevenue,
-        'status': ?status,
-        'createdByUserId': ?createdByUserId,
+        'category': category,
+        'expectedRevenue': expectedRevenue,
+        'status': status,
+        'createdByUserId': createdByUserId,
       },
     );
     return Sale.fromJson(response.data);
@@ -78,14 +78,14 @@ class SaleRepository {
     final response = await _apiClient.put(
       '${AppConstants.sales}/$id',
       data: {
-        'companyId': ?companyId,
-        'prospect': ?prospect,
-        'category': ?category,
+        'companyId': companyId,
+        'prospect': prospect,
+        'category': category,
         if (expectedClosingDate != null)
           'expectedClosingDate': expectedClosingDate.toIso8601String().split(
             'T',
           )[0],
-        'expectedRevenue': ?expectedRevenue,
+        'expectedRevenue': expectedRevenue,
       },
     );
     return Sale.fromJson(response.data);
@@ -101,8 +101,8 @@ class SaleRepository {
       '${AppConstants.sales}/$id/status',
       data: {
         'status': status,
-        'note': ?note,
-        'changedByUserId': ?changedByUserId,
+        'note': note,
+        'changedByUserId': changedByUserId,
       },
     );
     return Sale.fromJson(response.data);
@@ -134,8 +134,8 @@ class SaleRepository {
       data: {
         'title': title,
         'date': date.toIso8601String().split('T')[0],
-        'note': ?note,
-        'createdByUserId': ?createdByUserId,
+        'note': note,
+        'createdByUserId': createdByUserId,
       },
     );
     return SaleActivity.fromJson(response.data);
@@ -151,8 +151,8 @@ class SaleRepository {
     final response = await _apiClient.put(
       '${AppConstants.sales}/$saleId/activities/$activityId',
       data: {
-        'title': ?title,
-        'note': ?note,
+        'title': title,
+        'note': note,
         if (date != null) 'date': date.toIso8601String().split('T')[0],
       },
     );

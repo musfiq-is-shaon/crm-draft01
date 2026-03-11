@@ -48,18 +48,24 @@ class TaskRepository {
     required DateTime dueDatetime,
     String? assignByUserId,
     String? assignToUserId,
+    String? actorUserId,
   }) async {
-    final response = await _apiClient.post(
-      AppConstants.tasks,
-      data: {
-        'title': title,
-        'companyId': companyId,
-        'dueDatetime': dueDatetime.toIso8601String(),
-        'note': ?note,
-        'assignByUserId': ?assignByUserId,
-        'assignToUserId': ?assignToUserId,
-      },
-    );
+    final data = {
+      'title': title,
+      'companyId': companyId,
+      'dueDatetime': dueDatetime.toIso8601String(),
+      'note': note,
+      'assignByUserId': assignByUserId,
+      'assignToUserId': assignToUserId,
+      'actorUserId': actorUserId,
+    };
+
+    // Debug: Print the actual data being sent
+    print('=== API REQUEST: CREATE TASK ===');
+    print('Data: $data');
+    print('=================================');
+
+    final response = await _apiClient.post(AppConstants.tasks, data: data);
     return Task.fromJson(response.data);
   }
 
@@ -76,13 +82,13 @@ class TaskRepository {
     final response = await _apiClient.put(
       '${AppConstants.tasks}/$id',
       data: {
-        'title': ?title,
-        'note': ?note,
-        'companyId': ?companyId,
+        'title': title,
+        'note': note,
+        'companyId': companyId,
         if (dueDatetime != null) 'dueDatetime': dueDatetime.toIso8601String(),
-        'assignByUserId': ?assignByUserId,
-        'assignToUserId': ?assignToUserId,
-        'actorUserId': ?actorUserId,
+        'assignByUserId': assignByUserId,
+        'assignToUserId': assignToUserId,
+        'actorUserId': actorUserId,
       },
     );
     return Task.fromJson(response.data);
@@ -96,11 +102,7 @@ class TaskRepository {
   }) async {
     final response = await _apiClient.patch(
       '${AppConstants.tasks}/$id/status',
-      data: {
-        'status': status,
-        'note': ?note,
-        'actorUserId': ?actorUserId,
-      },
+      data: {'status': status, 'note': note, 'actorUserId': actorUserId},
     );
     return Task.fromJson(response.data);
   }

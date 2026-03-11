@@ -68,6 +68,12 @@ class ApiClient {
     Options? options,
   }) async {
     try {
+      // Debug: Print POST request
+      print('=== API POST REQUEST ===');
+      print('Path: $path');
+      print('Data: $data');
+      print('========================');
+
       return await _dio.post(
         path,
         data: data,
@@ -75,6 +81,12 @@ class ApiClient {
         options: options,
       );
     } on DioException catch (e) {
+      // Debug: Print error
+      print('=== API POST ERROR ===');
+      print('Error: $e');
+      print('Response: ${e.response?.data}');
+      print('Status Code: ${e.response?.statusCode}');
+      print('======================');
       throw _handleError(e);
     }
   }

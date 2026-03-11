@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
@@ -26,6 +28,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companiesProvider.notifier).loadCompanies();
       ref.read(usersProvider.notifier).loadUsers();
+      ref.read(currenciesProvider.notifier).loadCurrencies();
       // Open create dialog if requested
       if (widget.openCreateDialog) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -384,6 +387,8 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
 
   void _showCreateCompanyDialog(BuildContext context) {
     final usersState = ref.read(usersProvider);
+    final currenciesState = ref.read(currenciesProvider);
+    final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
@@ -393,7 +398,15 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final countryController = TextEditingController();
-    String? selectedKamUserId;
+
+    // Set current user as default KAM
+    String? selectedKamUserId = authState.user?.id;
+
+    // Set default currency if available
+    String? selectedCurrencyId;
+    if (currenciesState.currencies.isNotEmpty) {
+      selectedCurrencyId = currenciesState.currencies.first.id;
+    }
 
     showDialog(
       context: context,
@@ -417,6 +430,32 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                       borderSide: BorderSide(color: borderColor),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                // Currency Dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedCurrencyId,
+                  decoration: InputDecoration(
+                    labelText: 'Currency *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  items: currenciesState.currencies.map((currency) {
+                    return DropdownMenuItem(
+                      value: currency.id,
+                      child: Text('${currency.code} - ${currency.name}'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedCurrencyId = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -449,38 +488,6 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedKamUserId,
-                  decoration: InputDecoration(
-                    labelText: 'KAM (Key Account Manager)',
-                    labelStyle: TextStyle(color: textSecondary),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                  ),
-                  dropdownColor: surfaceColor,
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Select KAM'),
-                    ),
-                    ...usersState.users.map(
-                      (user) => DropdownMenuItem(
-                        value: user.id,
-                        child: Text(
-                          user.name,
-                          style: TextStyle(color: textPrimary),
-                        ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() => selectedKamUserId = value);
-                  },
-                ),
               ],
             ),
           ),
@@ -491,7 +498,8 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
             ),
             TextButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty) {
+                if (nameController.text.isNotEmpty &&
+                    selectedCurrencyId != null) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -503,6 +511,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                             ? countryController.text
                             : null,
                         kamUserId: selectedKamUserId ?? '',
+                        currencyId: selectedCurrencyId!,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;
