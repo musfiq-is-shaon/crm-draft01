@@ -28,6 +28,7 @@ class TaskDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksState = ref.watch(tasksProvider);
     final task = tasksState.tasks.where((t) => t.id == taskId).firstOrNull;
+    final isAdmin = ref.watch(isAdminProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
@@ -46,17 +47,18 @@ class TaskDetailPage extends ConsumerWidget {
         ),
         title: Text('Task Details', style: TextStyle(color: textPrimary)),
         actions: [
-          IconButton(
-            icon: Icon(Icons.edit_outlined, color: textPrimary),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TaskFormPage(task: task),
-                ),
-              );
-            },
-          ),
+          if (isAdmin)
+            IconButton(
+              icon: Icon(Icons.edit_outlined, color: textPrimary),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TaskFormPage(task: task),
+                  ),
+                );
+              },
+            ),
         ],
       ),
       body: task == null
@@ -266,6 +268,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
   String? _selectedAssignByUserId;
   bool _isLoading = false;
   DateTime? _selectedDueDate;
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -286,6 +289,17 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companiesProvider.notifier).loadCompanies();
       ref.read(usersProvider.notifier).loadUsers();
+
+      // For new tasks, set the current user as default "Assigned By"
+      if (widget.task == null && !_initialized) {
+        _initialized = true;
+        final authState = ref.read(authProvider);
+        if (authState.user != null) {
+          setState(() {
+            _selectedAssignByUserId = authState.user!.id;
+          });
+        }
+      }
     });
   }
 

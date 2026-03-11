@@ -3,6 +3,7 @@ import '../../data/models/task_model.dart';
 import '../../data/models/company_model.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/company_repository.dart';
+import 'auth_provider.dart';
 
 class TasksState {
   final List<Task> tasks;
@@ -100,6 +101,41 @@ class TasksState {
       tasks.where((t) => t.status == 'completed').toList();
   List<Task> get overdueTasks => tasks.where((t) => t.isOverdue).toList();
 }
+
+// Provider to get filtered tasks based on user role
+final userFilteredTasksProvider = Provider<List<Task>>((ref) {
+  final tasksState = ref.watch(tasksProvider);
+  final currentUserId = ref.watch(currentUserIdProvider);
+  final isAdmin = ref.watch(isAdminProvider);
+
+  // Admin sees all tasks, regular users see only their assigned tasks
+  if (isAdmin) {
+    return tasksState.tasks;
+  }
+
+  // Filter tasks where the user is the assignee
+  return tasksState.tasks
+      .where((task) => task.assignToUserId == currentUserId)
+      .toList();
+});
+
+// Provider to get filtered pending tasks
+final userFilteredPendingTasksProvider = Provider<List<Task>>((ref) {
+  final userTasks = ref.watch(userFilteredTasksProvider);
+  return userTasks.where((t) => t.status == 'pending').toList();
+});
+
+// Provider to get filtered in-progress tasks
+final userFilteredInProgressTasksProvider = Provider<List<Task>>((ref) {
+  final userTasks = ref.watch(userFilteredTasksProvider);
+  return userTasks.where((t) => t.status == 'in_progress').toList();
+});
+
+// Provider to get filtered completed tasks
+final userFilteredCompletedTasksProvider = Provider<List<Task>>((ref) {
+  final userTasks = ref.watch(userFilteredTasksProvider);
+  return userTasks.where((t) => t.status == 'completed').toList();
+});
 
 class TasksNotifier extends StateNotifier<TasksState> {
   final TaskRepository _taskRepository;

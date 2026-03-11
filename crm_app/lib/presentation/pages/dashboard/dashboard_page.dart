@@ -5,6 +5,7 @@ import '../../providers/sale_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/contact_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/kpi_card.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
@@ -43,6 +44,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final contactsState = ref.watch(contactsProvider);
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    final isAdmin = ref.watch(isAdminProvider);
+
+    // Use filtered data based on user role
+    final userFilteredSales = ref.watch(userFilteredSalesProvider);
+    final userFilteredClosed = ref.watch(userFilteredClosedProvider);
+    final userFilteredTasks = ref.watch(userFilteredTasksProvider);
+    final userPendingTasks = ref.watch(userFilteredPendingTasksProvider);
+    final userInProgressTasks = ref.watch(userFilteredInProgressTasksProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
@@ -148,20 +157,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           children: [
                             KPICard(
                               title: 'Total Deals',
-                              value: '${salesState.sales.length}',
+                              value: isAdmin
+                                  ? '${salesState.sales.length}'
+                                  : '${userFilteredSales.length}',
                               icon: Icons.trending_up,
                               iconColor: const Color(0xFF2563EB),
                             ),
                             KPICard(
                               title: 'Closed Deals',
-                              value: '${salesState.closed.length}',
+                              value: isAdmin
+                                  ? '${salesState.closed.length}'
+                                  : '${userFilteredClosed.length}',
                               icon: Icons.check_circle_outline,
                               iconColor: const Color(0xFF10B981),
                             ),
                             KPICard(
                               title: 'Pending Tasks',
-                              value:
-                                  '${tasksState.pendingTasks.length + tasksState.inProgressTasks.length}',
+                              value: isAdmin
+                                  ? '${tasksState.pendingTasks.length + tasksState.inProgressTasks.length}'
+                                  : '${userPendingTasks.length + userInProgressTasks.length}',
                               icon: Icons.pending_actions,
                               iconColor: const Color(0xFFF59E0B),
                             ),
@@ -293,7 +307,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
               ),
 
-              // Tasks List
+              // Tasks List - Use filtered tasks based on user role
               if (tasksState.isLoading)
                 const SliverToBoxAdapter(
                   child: Padding(
@@ -301,13 +315,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     child: LoadingWidget(),
                   ),
                 )
-              else if (tasksState.tasks.isEmpty)
+              else if (userFilteredTasks.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: app_widgets.EmptyStateWidget(
-                      title: 'No tasks yet',
-                      subtitle: 'Create your first task to get started',
+                      title: isAdmin
+                          ? 'No tasks yet'
+                          : 'No tasks assigned to you',
+                      subtitle: isAdmin
+                          ? 'Create your first task to get started'
+                          : 'Tasks assigned to you will appear here',
                       icon: Icons.task_alt,
                     ),
                   ),
@@ -317,14 +335,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       if (index >= 5) return null;
-                      final task = tasksState.tasks[index];
+                      final task = userFilteredTasks[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 6,
                         ),
                         child: CRMCard(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    TaskDetailPage(taskId: task.id),
+                              ),
+                            );
+                          },
                           child: Row(
                             children: [
                               Container(
@@ -395,9 +421,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
                       );
                     },
-                    childCount: tasksState.tasks.length > 5
+                    childCount: userFilteredTasks.length > 5
                         ? 5
-                        : tasksState.tasks.length,
+                        : userFilteredTasks.length,
                   ),
                 ),
 

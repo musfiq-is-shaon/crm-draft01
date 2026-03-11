@@ -1,34 +1,53 @@
-# TODO - Contact Filter Page Fix
+# ✅ COMPLETED: User Role Based Feature Restrictions
 
-## Task: Fix contact filter page positioning issue
+## Objective - COMPLETED
+Implement feature restrictions for non-admin users in the CRM app:
+- Tasks: Users only see tasks assigned to them
+- Deals (Sales): Users only see deals where they are the KAM of the associated company
 
-### Issue:
-The contact filter page is positioned too low in the screen, causing the company dropdown to not show fully when clicked.
+## Implementation Steps - ALL COMPLETED
 
-### Steps to Complete:
+### Step 1: Create Current User Provider ✅
+- Added `currentUserIdProvider` to get current user ID
+- Added `isAdminProvider` to check if user is admin
 
-- [x] 1. Modify `contacts_list_page.dart` - Update `_showFilterDialog` to constrain bottom sheet height
-- [x] 2. Modify `searchable_dropdown.dart` - Add logic to show dropdown above if space below is insufficient
+### Step 2: Update Task Provider ✅
+- Added `userFilteredTasksProvider` - filters tasks by assignToUserId for non-admin users
+- Added `userFilteredPendingTasksProvider`, `userFilteredInProgressTasksProvider`, `userFilteredCompletedTasksProvider`
 
-### Files Edited:
-1. `crm_app/lib/presentation/pages/contacts/contacts_list_page.dart`
-2. `crm_app/lib/presentation/widgets/searchable_dropdown.dart`
+### Step 3: Update Sale Provider ✅
+- Added `userFilteredSalesProvider` - filters deals by company.kamUserId for non-admin users
+- Added `userFilteredLeadsProvider`, `userFilteredProspectsProvider`, `userFilteredClosedProvider`, `userFilteredTotalRevenueProvider`
 
-### Changes Made:
-1. **contacts_list_page.dart**: 
-   - Added `ConstrainedBox` with max height of 70% of screen
-   - Wrapped content in `SingleChildScrollView` for scrollability
-   - Updated padding to handle keyboard
+### Step 4: Update Dashboard Page ✅
+- KPI cards now show filtered data based on user role
+- Recent tasks show only user's assigned tasks
+- Empty state messages updated for non-admin users
 
-2. **searchable_dropdown.dart**:
-   - Added logic to calculate available space above/below dropdown
-   - Shows dropdown above if there's not enough space below
-   - Uses calculated `offsetY` for proper positioning
+### Step 5: Update Tasks List Page ✅
+- Tasks list now filters by assignToUserId for non-admin users
+- Admin sees all tasks, regular users see only their assigned tasks
 
-### Testing:
-Build and run the app to verify the fix
-- Navigate to Contacts page
-- Click on filter icon
-- Verify the filter dialog is properly positioned
-- Click on company dropdown and verify options are visible
+### Step 6: Update Sales List Page ✅
+- Sales list now filters by company.kamUserId for non-admin users
+- Admin sees all deals, regular users see only deals where they are KAM
+
+### Step 7: Update Navigation ✅
+- Users Management menu item only visible to admin users in More page
+
+## Files Modified
+1. `crm_app/lib/presentation/providers/auth_provider.dart` - Added currentUserIdProvider and isAdminProvider
+2. `crm_app/lib/presentation/providers/task_provider.dart` - Added userFilteredTasksProvider and related providers
+3. `crm_app/lib/presentation/providers/sale_provider.dart` - Added userFilteredSalesProvider and related providers
+4. `crm_app/lib/presentation/pages/dashboard/dashboard_page.dart` - Updated to use filtered data
+5. `crm_app/lib/presentation/pages/main/more_page.dart` - Hide admin-only menu items
+6. `crm_app/lib/presentation/pages/tasks/tasks_list_page.dart` - Added role-based filtering
+7. `crm_app/lib/presentation/pages/sales/sales_list_page.dart` - Added role-based filtering
+
+## How It Works
+- **Admin users** (role = 'admin') see ALL data
+- **Regular users** see ONLY:
+  - Tasks where they are the assignee (`assignToUserId` matches their user ID)
+  - Deals where they are the KAM of the company (`company.kamUserId` matches their user ID)
+- Filtering happens at the provider level for consistent data across the app
 

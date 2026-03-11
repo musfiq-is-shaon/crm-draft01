@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/task_model.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
@@ -43,6 +45,9 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
   @override
   Widget build(BuildContext context) {
     final tasksState = ref.watch(tasksProvider);
+    final isAdmin = ref.watch(isAdminProvider);
+    final currentUserId = ref.watch(currentUserIdProvider);
+    final userFilteredTasks = ref.watch(userFilteredTasksProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
@@ -156,10 +161,34 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildTasksList(tasksState, null),
-          _buildTasksList(tasksState, 'pending'),
-          _buildTasksList(tasksState, 'in_progress'),
-          _buildTasksList(tasksState, 'completed'),
+          _buildTasksList(
+            tasksState,
+            null,
+            userFilteredTasks,
+            isAdmin,
+            currentUserId,
+          ),
+          _buildTasksList(
+            tasksState,
+            'pending',
+            userFilteredTasks,
+            isAdmin,
+            currentUserId,
+          ),
+          _buildTasksList(
+            tasksState,
+            'in_progress',
+            userFilteredTasks,
+            isAdmin,
+            currentUserId,
+          ),
+          _buildTasksList(
+            tasksState,
+            'completed',
+            userFilteredTasks,
+            isAdmin,
+            currentUserId,
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -175,7 +204,13 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
     );
   }
 
-  Widget _buildTasksList(TasksState state, String? status) {
+  Widget _buildTasksList(
+    TasksState state,
+    String? status,
+    List<Task> userTasks,
+    bool isAdmin,
+    String? currentUserId,
+  ) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
@@ -184,12 +219,66 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
       return const LoadingWidget();
     }
 
-    // Use filteredTasks which includes search and date range filtering
-    // then filter by status if needed
-    final filteredBySearchAndDate = state.filteredTasks;
-    final tasks = status == null
-        ? filteredBySearchAndDate
-        : filteredBySearchAndDate.where((t) => t.status == status).toList();
+    // Use all tasks as base - filtering will be applied locally
+    var tasks = state.tasks;
+
+    // Apply user role filtering (admin sees all, regular users see only their assigned tasks)
+    if (!isAdmin && currentUserId != null) {
+      tasks = tasks.where((t) => t.assignToUserId == currentUserId).toList();
+    }
+
+    // Apply search filter locally
+    if (state.searchQuery != null && state.searchQuery!.isNotEmpty) {
+      final query = state.searchQuery!.toLowerCase();
+      tasks = tasks.where((t) {
+        final taskNameMatch = t.title.toLowerCase().contains(query);
+        final companyNameMatch =
+            t.company?.name.toLowerCase().contains(query) ?? false;
+        return taskNameMatch || companyNameMatch;
+      }).toList();
+    }
+
+    // Apply assignee filter locally
+    if (state.assignToUserIdFilter != null &&
+        state.assignToUserIdFilter!.isNotEmpty) {
+      tasks = tasks
+          .where((t) => t.assignToUserId == state.assignToUserIdFilter)
+          .toList();
+    }
+
+    // Apply date range filter locally
+    if (state.startDate != null || state.endDate != null) {
+      tasks = tasks.where((t) {
+        if (t.dueDatetime == null) return false;
+        final taskDate = DateTime(
+          t.dueDatetime!.year,
+          t.dueDatetime!.month,
+          t.dueDatetime!.day,
+        );
+        if (state.startDate != null) {
+          final start = DateTime(
+            state.startDate!.year,
+            state.startDate!.month,
+            state.startDate!.day,
+          );
+          if (taskDate.isBefore(start)) return false;
+        }
+        if (state.endDate != null) {
+          final end = DateTime(
+            state.endDate!.year,
+            state.endDate!.month,
+            state.endDate!.day,
+          );
+          if (taskDate.isAfter(end)) return false;
+        }
+        return true;
+      }).toList();
+    }
+
+    // Apply status filter locally (from tab selection)
+    if (status != null) {
+      tasks = tasks.where((t) => t.status == status).toList();
+    }
 
     if (tasks.isEmpty) {
       return app_widgets.EmptyStateWidget(
@@ -199,7 +288,12 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
             : 'Create your first task',
         icon: Icons.task_alt,
         buttonText: 'Add Task',
-        onButtonPressed: () {},
+        onButtonPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const TaskFormPage()),
+          );
+        },
       );
     }
 

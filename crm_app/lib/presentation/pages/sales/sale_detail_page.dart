@@ -5,6 +5,7 @@ import '../../../data/models/sale_model.dart';
 import '../../providers/sale_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../../data/repositories/sale_repository.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
@@ -876,6 +877,23 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
           );
           setState(() => _isLoading = false);
           return;
+        }
+
+        // Get the current user ID to set as KAM
+        final currentUserId = ref.read(currentUserIdProvider);
+
+        // If current user exists, set them as the KAM of the selected company
+        if (currentUserId != null) {
+          try {
+            await ref
+                .read(companiesProvider.notifier)
+                .updateCompany(
+                  id: _selectedCompanyId!,
+                  kamUserId: currentUserId,
+                );
+          } catch (e) {
+            // Continue even if KAM update fails
+          }
         }
 
         await ref

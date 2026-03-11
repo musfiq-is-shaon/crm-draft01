@@ -5,6 +5,7 @@ import '../../data/models/user_model.dart';
 import '../../data/repositories/sale_repository.dart';
 import '../../data/repositories/company_repository.dart';
 import '../../data/repositories/user_repository.dart';
+import 'auth_provider.dart';
 
 class SalesState {
   final List<Sale> sales;
@@ -70,6 +71,55 @@ class SalesState {
       )
       .fold(0.0, (sum, s) => sum + s.expectedRevenue!);
 }
+
+// Provider to get filtered sales based on user role (KAM)
+final userFilteredSalesProvider = Provider<List<Sale>>((ref) {
+  final salesState = ref.watch(salesProvider);
+  final currentUserId = ref.watch(currentUserIdProvider);
+  final isAdmin = ref.watch(isAdminProvider);
+
+  // Admin sees all sales, regular users see only their KAM deals
+  if (isAdmin) {
+    return salesState.sales;
+  }
+
+  // Filter sales where the user is the KAM of the associated company
+  return salesState.sales
+      .where((sale) => sale.company?.kamUserId == currentUserId)
+      .toList();
+});
+
+// Provider to get filtered leads
+final userFilteredLeadsProvider = Provider<List<Sale>>((ref) {
+  final userSales = ref.watch(userFilteredSalesProvider);
+  return userSales.where((s) => s.status == 'lead').toList();
+});
+
+// Provider to get filtered prospects
+final userFilteredProspectsProvider = Provider<List<Sale>>((ref) {
+  final userSales = ref.watch(userFilteredSalesProvider);
+  return userSales.where((s) => s.status == 'prospect').toList();
+});
+
+// Provider to get filtered closed deals
+final userFilteredClosedProvider = Provider<List<Sale>>((ref) {
+  final userSales = ref.watch(userFilteredSalesProvider);
+  return userSales
+      .where((s) => s.status == 'closed' || s.status == 'closed_won')
+      .toList();
+});
+
+// Provider to get filtered total revenue
+final userFilteredTotalRevenueProvider = Provider<double>((ref) {
+  final userSales = ref.watch(userFilteredSalesProvider);
+  return userSales
+      .where(
+        (s) =>
+            (s.status == 'closed' || s.status == 'closed_won') &&
+            s.expectedRevenue != null,
+      )
+      .fold(0.0, (sum, s) => sum + s.expectedRevenue!);
+});
 
 class SalesNotifier extends StateNotifier<SalesState> {
   final SaleRepository _saleRepository;

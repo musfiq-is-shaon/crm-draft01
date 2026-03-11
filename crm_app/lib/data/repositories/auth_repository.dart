@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
@@ -31,9 +32,18 @@ class AuthRepository {
 
   Future<void> logout() async {
     try {
-      await _apiClient.post(AppConstants.authLogout);
+      // Use a short timeout for logout - we don't need to wait for server response
+      // We just need to clear local storage regardless of server response
+      await _apiClient.post(
+        AppConstants.authLogout,
+        options: Options(
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
     } catch (_) {
-      // Ignore logout API errors
+      // Ignore logout API errors - server might be slow or unreachable
+      // We still want to clear local storage and log out
     } finally {
       await _storage.clearAll();
     }

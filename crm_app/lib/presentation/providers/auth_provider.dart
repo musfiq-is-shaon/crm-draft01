@@ -65,6 +65,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
+// Helper provider to get current user ID
+final currentUserIdProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authProvider);
+  return authState.user?.id;
+});
+
+// Helper provider to check if current user is admin
+final isAdminProvider = Provider<bool>((ref) {
+  final authState = ref.watch(authProvider);
+  return authState.user?.isAdmin ?? false;
+});
+
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
   return AuthNotifier(authRepository);

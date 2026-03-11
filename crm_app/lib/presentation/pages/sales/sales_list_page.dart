@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/company_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/sale_model.dart';
 import '../../providers/sale_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
@@ -60,6 +62,8 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
     final salesState = ref.watch(salesProvider);
     final companiesState = ref.watch(companiesProvider);
     final usersState = ref.watch(usersProvider);
+    final isAdmin = ref.watch(isAdminProvider);
+    final userFilteredSales = ref.watch(userFilteredSalesProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
@@ -232,14 +236,29 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildSalesList(salesState, null),
-          _buildSalesList(salesState, 'lead'),
-          _buildSalesList(salesState, 'prospect'),
-          _buildSalesList(salesState, 'proposal'),
-          _buildSalesList(salesState, 'negotiation'),
-          _buildSalesList(salesState, 'closed_won'),
-          _buildSalesList(salesState, 'closed_lost'),
-          _buildSalesList(salesState, 'disqualified'),
+          _buildSalesList(salesState, null, userFilteredSales, isAdmin),
+          _buildSalesList(salesState, 'lead', userFilteredSales, isAdmin),
+          _buildSalesList(salesState, 'prospect', userFilteredSales, isAdmin),
+          _buildSalesList(salesState, 'proposal', userFilteredSales, isAdmin),
+          _buildSalesList(
+            salesState,
+            'negotiation',
+            userFilteredSales,
+            isAdmin,
+          ),
+          _buildSalesList(salesState, 'closed_won', userFilteredSales, isAdmin),
+          _buildSalesList(
+            salesState,
+            'closed_lost',
+            userFilteredSales,
+            isAdmin,
+          ),
+          _buildSalesList(
+            salesState,
+            'disqualified',
+            userFilteredSales,
+            isAdmin,
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -255,7 +274,12 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
     );
   }
 
-  Widget _buildSalesList(SalesState state, String? status) {
+  Widget _buildSalesList(
+    SalesState state,
+    String? status,
+    List<Sale> userFilteredSales,
+    bool isAdmin,
+  ) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
@@ -265,8 +289,9 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
       return const LoadingWidget();
     }
 
-    // Apply filters - use filteredSales from provider combined with local filters
-    var sales = state.filteredSales;
+    // Use user-filtered sales (by company.kamUserId) for non-admin users
+    // Admin sees all sales, regular users see only deals where they are KAM
+    var sales = isAdmin ? state.filteredSales : userFilteredSales;
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
@@ -358,7 +383,12 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
             : 'Create your first deal',
         icon: Icons.trending_up,
         buttonText: 'Add Deal',
-        onButtonPressed: () {},
+        onButtonPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SaleFormPage()),
+          );
+        },
       );
     }
 
