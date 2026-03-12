@@ -1,12 +1,14 @@
-# TODO: Implement "Created By" Feature for Expenses
+# Add New Company Option to Expense Form Dropdown
 
-## Task
-Add "created by" functionality to expense details and expense list card, showing the name of the user who created the expense.
+✅ Plan approved by user
 
-## Steps to Complete
+## Steps to implement:
 
-- [x] 1. Update expense_repository.dart - Add createdByUserId parameter to createExpense method
-- [x] 2. Update expense_provider.dart - Add createdByUserId parameter to createExpense method  
-- [x] 3. Update expense_form_page.dart - Get current user ID and pass it when creating expense
-- [x] 4. Update expenses_list_page.dart - Add "Created by" row in the expense card
+1. [x] Add required imports to expense_form_page.dart (user_provider.dart, currency_provider.dart)
+2. [x] Update initState() to load usersProvider and currenciesProvider
+3. [x] Add _showCreateCompanyDialog() method to expense_form_page.dart (adapted from task_detail_page.dart)
+4. [x] Add onAddNew callback to SearchableDropdown in Company section
+5. [x] Test the implementation
+6. [x] Mark complete and attempt_completion
 
+**Implementation complete!** "Add New Company" now appears in expense form company dropdown, matching task/deal pages.

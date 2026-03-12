@@ -57,7 +57,7 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
           child: TabBar(
             controller: _tabController,
             isScrollable: false,
-            padding: EdgeInsets.zero,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             automaticIndicatorColorAdjustment: false,
             labelColor: primaryColor,
             unselectedLabelColor: textSecondary,
@@ -65,12 +65,12 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
             indicatorSize: TabBarIndicatorSize.label,
             dividerColor: Colors.transparent,
             tabs: const [
-              Tab(text: 'All'),
               Tab(text: 'Unpaid'),
               Tab(text: 'Paid'),
+              Tab(text: 'All'),
             ],
             onTap: (index) {
-              final statuses = [null, 'unpaid', 'paid'];
+              final statuses = ['unpaid', 'paid', null];
               ref
                   .read(expensesProvider.notifier)
                   .setStatusFilter(statuses[index]);
@@ -81,9 +81,9 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildExpensesList(expensesState, null),
           _buildExpensesList(expensesState, 'unpaid'),
           _buildExpensesList(expensesState, 'paid'),
+          _buildExpensesList(expensesState, null),
         ],
       ),
       floatingActionButton: FloatingActionButton(

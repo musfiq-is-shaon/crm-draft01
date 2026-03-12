@@ -5,6 +5,8 @@ import '../../../data/models/expense_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../widgets/searchable_dropdown.dart';
 
 class ExpenseFormPage extends ConsumerStatefulWidget {
@@ -44,6 +46,8 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companiesProvider.notifier).loadCompanies();
+      ref.read(usersProvider.notifier).loadUsers();
+      ref.read(currenciesProvider.notifier).loadCurrencies();
 
       // If editing, load the expense data
       if (widget.expenseId != null) {
@@ -81,6 +85,157 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
     _toLocationController.dispose();
     _purposeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showCreateCompanyDialog(BuildContext context) async {
+    final usersState = ref.read(usersProvider);
+    final currenciesState = ref.read(currenciesProvider);
+    final authState = ref.read(authProvider);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final borderColor = AppThemeColors.borderColor(context);
+    final primaryColor = const Color(0xFF2563EB);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+
+    final nameController = TextEditingController();
+    final locationController = TextEditingController();
+    final countryController = TextEditingController();
+
+    // Set current user as default KAM
+    String? selectedKamUserId = authState.user?.id;
+
+    // Set default currency if available
+    String? selectedCurrencyId;
+    if (currenciesState.currencies.isNotEmpty) {
+      selectedCurrencyId = currenciesState.currencies.first.id;
+    }
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Create Company', style: TextStyle(color: textPrimary)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Company Name *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Currency Dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedCurrencyId,
+                  decoration: InputDecoration(
+                    labelText: 'Currency *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  items: currenciesState.currencies.map((currency) {
+                    return DropdownMenuItem(
+                      value: currency.id,
+                      child: Text('${currency.code} - ${currency.name}'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedCurrencyId = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: locationController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Location',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: countryController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Country',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: primaryColor)),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty &&
+                    selectedCurrencyId != null) {
+                  await ref
+                      .read(companiesProvider.notifier)
+                      .createCompany(
+                        name: nameController.text,
+                        location: locationController.text.isNotEmpty
+                            ? locationController.text
+                            : null,
+                        country: countryController.text.isNotEmpty
+                            ? countryController.text
+                            : null,
+                        kamUserId: selectedKamUserId ?? '',
+                        currencyId: selectedCurrencyId!,
+                      );
+                  // Get the newly created company (first in the list)
+                  final companies = ref.read(companiesProvider).companies;
+                  if (companies.isNotEmpty && context.mounted) {
+                    Navigator.pop(context, companies.first.id);
+                  } else if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: Text('Create', style: TextStyle(color: primaryColor)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedCompanyId = result;
+      });
+    }
   }
 
   Future<void> _selectDate() async {
@@ -169,6 +324,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
               tripType: _selectedTripType,
               status: _selectedStatus,
             );
+        ref.invalidate(expenseDetailProvider(widget.expenseId!));
       }
 
       if (mounted) {
@@ -254,6 +410,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                         _selectedCompanyId = value;
                       });
                     },
+                    onAddNew: () => _showCreateCompanyDialog(context),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Company is required';

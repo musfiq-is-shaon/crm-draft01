@@ -28,7 +28,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(tasksProvider.notifier).loadTasks();
       ref.read(usersProvider.notifier).loadUsers();
@@ -67,7 +67,10 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -111,25 +114,27 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                         },
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: borderColor),
+                    if (isAdmin) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.filter_list, color: textPrimary),
+                          onPressed: () => _showFilterDialog(context),
+                        ),
                       ),
-                      child: IconButton(
-                        icon: Icon(Icons.filter_list, color: textPrimary),
-                        onPressed: () => _showFilterDialog(context),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
               TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 automaticIndicatorColorAdjustment: false,
                 labelColor: primaryColor,
                 unselectedLabelColor: textSecondary,
@@ -137,20 +142,12 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                 indicatorSize: TabBarIndicatorSize.label,
                 dividerColor: Colors.transparent,
                 tabs: const [
-                  Tab(text: 'All'),
                   Tab(text: 'Pending'),
-                  Tab(text: 'In Progress'),
                   Tab(text: 'Completed'),
-                  Tab(text: 'Cancelled'),
+                  Tab(text: 'All'),
                 ],
                 onTap: (index) {
-                  final statuses = [
-                    null,
-                    'pending',
-                    'in_progress',
-                    'completed',
-                    'cancelled',
-                  ];
+                  final statuses = ['pending', 'completed', null];
                   ref
                       .read(tasksProvider.notifier)
                       .setStatusFilter(statuses[index]);
@@ -165,21 +162,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
         children: [
           _buildTasksList(
             tasksState,
-            null,
-            userFilteredTasks,
-            isAdmin,
-            currentUserId,
-          ),
-          _buildTasksList(
-            tasksState,
             'pending',
-            userFilteredTasks,
-            isAdmin,
-            currentUserId,
-          ),
-          _buildTasksList(
-            tasksState,
-            'in_progress',
             userFilteredTasks,
             isAdmin,
             currentUserId,
@@ -193,7 +176,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
           ),
           _buildTasksList(
             tasksState,
-            'cancelled',
+            null,
             userFilteredTasks,
             isAdmin,
             currentUserId,
@@ -286,7 +269,13 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
 
     // Apply status filter locally (from tab selection)
     if (status != null) {
-      tasks = tasks.where((t) => t.status == status).toList();
+      if (status == 'pending') {
+        tasks = tasks
+            .where((t) => t.status == 'pending' || t.status == 'in_progress')
+            .toList();
+      } else {
+        tasks = tasks.where((t) => t.status == status).toList();
+      }
     }
 
     if (tasks.isEmpty) {
