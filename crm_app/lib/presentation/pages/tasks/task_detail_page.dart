@@ -60,12 +60,13 @@ class TaskDetailPage extends ConsumerWidget {
                 );
               },
             ),
-          IconButton(
-            icon: Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: task != null
-                ? () => _showDeleteConfirmation(context, ref, task)
-                : null,
-          ),
+          if (isAdmin)
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: task != null
+                  ? () => _showDeleteConfirmation(context, ref, task)
+                  : null,
+            ),
         ],
       ),
       body: task == null
@@ -235,23 +236,52 @@ class TaskDetailPage extends ConsumerWidget {
     Color surfaceColor,
   ) {
     final isSelected = task.status == status;
-    return ActionChip(
-      label: Text(status.replaceAll('_', ' ').toUpperCase()),
-      backgroundColor: isSelected ? primaryColor : surfaceColor,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : textPrimary,
-        fontWeight: FontWeight.w500,
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected
+            ? primaryColor
+            : (isDarkMode ? surfaceColor : Colors.white),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? primaryColor : textSecondary.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
-      side: BorderSide(
-        color: isSelected ? primaryColor : textSecondary.withOpacity(0.3),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: isSelected
+              ? null
+              : () async {
+                  await ref
+                      .read(tasksProvider.notifier)
+                      .changeTaskStatus(id: task.id, status: status);
+                },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              status.replaceAll('_', ' ').toUpperCase(),
+              style: TextStyle(
+                color: isSelected ? Colors.white : textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
       ),
-      onPressed: isSelected
-          ? null
-          : () async {
-              await ref
-                  .read(tasksProvider.notifier)
-                  .changeTaskStatus(id: task.id, status: status);
-            },
     );
   }
 

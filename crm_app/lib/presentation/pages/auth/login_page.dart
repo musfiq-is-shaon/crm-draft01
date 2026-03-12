@@ -85,7 +85,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'CRM Pro',
+                        'CRM',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,

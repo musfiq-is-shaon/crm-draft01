@@ -28,7 +28,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(tasksProvider.notifier).loadTasks();
       ref.read(usersProvider.notifier).loadUsers();
@@ -141,6 +141,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                   Tab(text: 'Pending'),
                   Tab(text: 'In Progress'),
                   Tab(text: 'Completed'),
+                  Tab(text: 'Cancelled'),
                 ],
                 onTap: (index) {
                   final statuses = [
@@ -148,6 +149,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                     'pending',
                     'in_progress',
                     'completed',
+                    'cancelled',
                   ];
                   ref
                       .read(tasksProvider.notifier)
@@ -185,6 +187,13 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
           _buildTasksList(
             tasksState,
             'completed',
+            userFilteredTasks,
+            isAdmin,
+            currentUserId,
+          ),
+          _buildTasksList(
+            tasksState,
+            'cancelled',
             userFilteredTasks,
             isAdmin,
             currentUserId,
@@ -348,33 +357,36 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                         children: [
                           StatusBadge(status: task.status, type: 'task'),
                           const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            icon: Icon(Icons.more_vert, color: textTertiary),
-                            onSelected: (value) {
-                              if (value == 'delete') {
-                                _showDeleteConfirmation(context, task);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.red[700],
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Delete',
-                                      style: TextStyle(color: Colors.red[700]),
-                                    ),
-                                  ],
+                          if (isAdmin)
+                            PopupMenuButton<String>(
+                              icon: Icon(Icons.more_vert, color: textTertiary),
+                              onSelected: (value) {
+                                if (value == 'delete') {
+                                  _showDeleteConfirmation(context, task);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem<String>(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red[700],
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: Colors.red[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
                     ],

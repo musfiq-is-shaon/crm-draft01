@@ -1,5 +1,5 @@
-name: crm_app
-description: "CRM Pro Mobile - A comprehensive CRM application"
+name: CRM
+description: "CRM Mobile - A comprehensive CRM application"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -53,10 +53,22 @@ dev_dependencies:
   freezed: ^3.0.0
   json_serializable: ^6.9.4
   riverpod_generator: ^2.6.5
+  
+  # App Icon Generator
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
   
   assets:
     - assets/images/
+    - assets/crm_icon.png
+  
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/crm_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/crm_icon.png"
 

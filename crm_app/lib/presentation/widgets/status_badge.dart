@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme_colors.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -12,7 +13,7 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _getBackgroundColor(),
+        color: _getBackgroundColor(context),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -20,13 +21,13 @@ class StatusBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: _getTextColor(),
+          color: _getTextColor(context),
         ),
       ),
     );
   }
 
-  Color _getBackgroundColor() {
+  Color _getBackgroundColor(BuildContext context) {
     switch (type) {
       case 'task':
         switch (status.toLowerCase()) {
@@ -75,9 +76,9 @@ class StatusBadge extends StatelessWidget {
       case 'expense':
         switch (status.toLowerCase()) {
           case 'unpaid':
-            return Colors.orange.withOpacity(0.1);
+            return AppThemeColors.expenseUnpaidBackgroundColor(context);
           case 'paid':
-            return Colors.green.withOpacity(0.1);
+            return AppThemeColors.expensePaidBackgroundColor(context);
           default:
             return AppColors.textTertiary.withOpacity(0.1);
         }
@@ -86,7 +87,7 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
-  Color _getTextColor() {
+  Color _getTextColor(BuildContext context) {
     switch (type) {
       case 'task':
         switch (status.toLowerCase()) {
@@ -135,9 +136,9 @@ class StatusBadge extends StatelessWidget {
       case 'expense':
         switch (status.toLowerCase()) {
           case 'unpaid':
-            return Colors.orange;
+            return AppThemeColors.expenseUnpaidColor(context);
           case 'paid':
-            return Colors.green;
+            return AppThemeColors.expensePaidColor(context);
           default:
             return AppColors.textTertiary;
         }

@@ -248,27 +248,68 @@ class TasksNotifier extends StateNotifier<TasksState> {
       final notificationSettings = await storageService
           .getNotificationSettings();
 
-      if (notificationSettings != null &&
-          notificationSettings['enabled'] == true) {
-        final daysBefore = notificationSettings['daysBefore'] ?? 1;
+      // Debug logging
+      print('=== NOTIFICATION DEBUG ===');
+      print('Settings from storage: $notificationSettings');
+      print('Total tasks: ${tasks.length}');
+
+      // Default to enabled with 1 day before if not set
+      final daysBefore = notificationSettings?['daysBefore'] is int
+          ? notificationSettings!['daysBefore'] as int
+          : 1;
+      final isEnabled = notificationSettings?['enabled'] is bool
+          ? notificationSettings!['enabled'] as bool
+          : true;
+
+      print('Enabled: $isEnabled, Days before: $daysBefore');
+
+      if (isEnabled) {
+        final now = DateTime.now();
 
         // Filter tasks that are not completed and have upcoming deadlines
         final pendingTasks = tasks.where((task) {
-          if (task.status == 'completed') return false;
-          if (task.dueDatetime == null) return false;
+          if (task.status == 'completed') {
+            print('Task "${task.title}" skipped - completed');
+            return false;
+          }
+          if (task.dueDatetime == null) {
+            print('Task "${task.title}" skipped - no due date');
+            return false;
+          }
 
-          final now = DateTime.now();
           final daysUntilDue = task.dueDatetime!.difference(now).inDays;
+          final hoursUntilDue = task.dueDatetime!.difference(now).inHours;
 
-          // Only schedule if the task is due within the notification window
-          return daysUntilDue <= daysBefore && daysUntilDue >= -1;
+          print(
+            'Task "${task.title}": due=${task.dueDatetime}, daysUntilDue=$daysUntilDue, hoursUntilDue=$hoursUntilDue',
+          );
+
+          // Include tasks that are due:
+          // - Within the notification window (daysBefore)
+          // - Or overdue by up to 1 day
+          final shouldNotify = daysUntilDue <= daysBefore && daysUntilDue >= -1;
+          print(
+            '  -> Should notify: $shouldNotify (condition: $daysUntilDue <= $daysBefore && $daysUntilDue >= -1)',
+          );
+
+          return shouldNotify;
         }).toList();
 
-        await notificationService.scheduleNotificationsForTasks(
-          tasks: pendingTasks,
-          daysBefore: daysBefore,
-        );
+        print('Pending tasks for notification: ${pendingTasks.length}');
+
+        if (pendingTasks.isNotEmpty) {
+          await notificationService.scheduleNotificationsForTasks(
+            tasks: pendingTasks,
+            daysBefore: daysBefore,
+          );
+          print('Notifications scheduled successfully');
+        } else {
+          print('No pending tasks to notify');
+        }
+      } else {
+        print('Notifications disabled');
       }
+      print('=========================');
     } catch (e) {
       print('Error scheduling notifications: $e');
     }
@@ -377,6 +418,9 @@ class TasksNotifier extends StateNotifier<TasksState> {
       // Enrich task with user and company details
       final enrichedTask = await _enrichTaskWithDetails(task);
       state = state.copyWith(tasks: [enrichedTask, ...state.tasks]);
+
+      // Schedule notifications for the new task
+      _scheduleTaskNotifications(state.tasks);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -407,6 +451,9 @@ class TasksNotifier extends StateNotifier<TasksState> {
           .map((t) => t.id == id ? enrichedTask : t)
           .toList();
       state = state.copyWith(tasks: updatedTasks);
+
+      // Schedule notifications for all tasks (including the updated one)
+      _scheduleTaskNotifications(updatedTasks);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -427,6 +474,9 @@ class TasksNotifier extends StateNotifier<TasksState> {
           .map((t) => t.id == id ? task : t)
           .toList();
       state = state.copyWith(tasks: updatedTasks);
+
+      // Schedule notifications (will exclude completed tasks automatically)
+      _scheduleTaskNotifications(updatedTasks);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -437,6 +487,11 @@ class TasksNotifier extends StateNotifier<TasksState> {
       await _taskRepository.deleteTask(id);
       final updatedTasks = state.tasks.where((t) => t.id != id).toList();
       state = state.copyWith(tasks: updatedTasks);
+
+      // Cancel notifications for the deleted task and reschedule remaining
+      final notificationService = NotificationService();
+      await notificationService.cancelTaskNotifications(id);
+      _scheduleTaskNotifications(updatedTasks);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }

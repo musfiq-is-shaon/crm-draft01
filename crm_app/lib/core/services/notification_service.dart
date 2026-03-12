@@ -78,15 +78,35 @@ class NotificationService {
     if (task.dueDatetime == null) return;
 
     final now = DateTime.now();
+
+    // Calculate notification time: due date minus daysBefore
+    // For example: if due date is March 13 and daysBefore=1,
+    // notification will be March 12 (1 day before)
     final notificationTime = task.dueDatetime!.subtract(
       Duration(days: daysBefore),
     );
 
-    // Don't schedule if the notification time has already passed
-    if (notificationTime.isBefore(now)) return;
+    // For daysBefore=0 (on due date), we want to notify at the start of the due date day
+    // For daysBefore>0, we want to notify at the same time on the day before
 
     // Don't schedule if the task is already completed
     if (task.status == 'completed') return;
+
+    // Debug logging
+    print('=== Scheduling Notification ===');
+    print('Task: ${task.title}');
+    print('Due: ${task.dueDatetime}');
+    print('DaysBefore: $daysBefore');
+    print('Notification Time: $notificationTime');
+    print('Now: $now');
+    print('Is in future: ${notificationTime.isAfter(now)}');
+    print('==============================');
+
+    // Don't schedule if the notification time has already passed
+    if (notificationTime.isBefore(now)) {
+      print('Skipping - notification time has passed');
+      return;
+    }
 
     final scheduledDate = tz.TZDateTime.from(notificationTime, tz.local);
 
@@ -138,6 +158,8 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: task.id,
     );
+
+    print('Notification scheduled with ID: $notificationId');
   }
 
   Future<void> scheduleNotificationsForTasks({

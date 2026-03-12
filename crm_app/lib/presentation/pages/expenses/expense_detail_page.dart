@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
@@ -14,6 +15,7 @@ class ExpenseDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(isAdminProvider);
     final expenseAsync = ref.watch(expenseDetailProvider(expenseId));
 
     final bgColor = AppThemeColors.backgroundColor(context);
@@ -31,17 +33,18 @@ class ExpenseDetailPage extends ConsumerWidget {
         backgroundColor: surfaceColor,
         title: Text('Expense Details', style: TextStyle(color: textPrimary)),
         actions: [
-          IconButton(
-            icon: Icon(Icons.edit, color: textPrimary),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ExpenseFormPage(expenseId: expenseId),
-                ),
-              );
-            },
-          ),
+          if (isAdmin)
+            IconButton(
+              icon: Icon(Icons.edit, color: textPrimary),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExpenseFormPage(expenseId: expenseId),
+                  ),
+                );
+              },
+            ),
           IconButton(
             icon: Icon(Icons.delete, color: errorColor),
             onPressed: () => _showDeleteDialog(context, ref),

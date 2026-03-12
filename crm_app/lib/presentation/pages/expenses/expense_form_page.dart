@@ -189,6 +189,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = ref.watch(isAdminProvider);
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
@@ -474,8 +475,8 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Status Dropdown (only for editing)
-              if (widget.expenseId != null) ...[
+              // Status Dropdown (only for editing and admin users)
+              if (widget.expenseId != null && isAdmin) ...[
                 Text(
                   'Status',
                   style: TextStyle(
@@ -503,7 +504,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: _selectedStatus == 'unpaid'
-                                  ? Colors.orange
+                                  ? AppThemeColors.expenseUnpaidColor(context)
                                   : Colors.transparent,
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(11),
@@ -535,7 +536,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: _selectedStatus == 'paid'
-                                  ? Colors.green
+                                  ? AppThemeColors.expensePaidColor(context)
                                   : Colors.transparent,
                               borderRadius: const BorderRadius.only(
                                 topRight: Radius.circular(11),
