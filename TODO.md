@@ -1,13 +1,14 @@
-# TODO - Fix Status Color in Expense Form
-d
+# Add User Name to Dashboard Welcome [COMPLETED ✅]
 
-## Task Details
-- Issue: Status colors in "change status" section are not good for both dark and light modes
-- Problem: Active status color is not visible, text can't be seen clearly
+## Task
+Display current user's name beside or below "Welcome back!" text in dashboard.
 
-## Steps to Complete
+## Steps
+- [x] 1. Add authState watch in DashboardPage build
+- [x] 2. Insert user name Text widget after "Welcome back!"
+- [x] 3. Update this TODO.md upon completion
+- [x] 4. Test with `flutter run` - check dashboard shows user name post-login (adjusted name font to 28pt > Dashboard's 24pt per feedback)
 
-- [x] 1. Add theme-aware expense status colors to app_theme_colors.dart
-- [x] 2. Update expense_form_page.dart to use theme-aware colors
-- [x] 3. Update status_badge.dart for consistency
-- [x] 4. Add "Cancelled" tab to tasks list page
+DashboardPage updated. User name now appears below "Welcome back!" using authProvider.user.name with null safety.
+
+Next tasks: Review other TODO.md files or new features.

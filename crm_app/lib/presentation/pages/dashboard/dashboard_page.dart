@@ -42,6 +42,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
     final isAdmin = ref.watch(isAdminProvider);
+    final authState = ref.watch(authProvider);
 
     // Use filtered data based on user role
     final userFilteredSales = ref.watch(userFilteredSalesProvider);
@@ -84,15 +85,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                   color: textSecondary,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Dashboard',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
+                              if (authState.user?.name.isNotEmpty ?? false)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    authState.user!.name,
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: textPrimary,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              const SizedBox(height: 12),
                             ],
                           ),
                           Container(

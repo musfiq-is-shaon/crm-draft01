@@ -41,17 +41,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
     final bgColor = AppThemeColors.backgroundColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
-    final infoColor = const Color(0xFF3B82F6);
-    final errorColor = const Color(0xFFEF4444);
+    final errorColor = colorScheme.error;
 
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.error!), backgroundColor: errorColor),
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: errorColor.withAlpha(200),
+          ),
         );
       }
     });
@@ -74,28 +78,50 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: primaryColor,
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primary,
+                              colorScheme.primary.withOpacity(0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.dashboard_rounded,
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                           size: 40,
                         ),
                       ),
                       const SizedBox(height: 24),
                       Text(
                         'CRM',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                        ),
+                        style:
+                            textTheme.headlineLarge?.copyWith(
+                              color: textPrimary,
+                            ) ??
+                            TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Welcome back! Please login to continue',
-                        style: TextStyle(fontSize: 14, color: textSecondary),
+                        style:
+                            textTheme.bodySmall?.copyWith(
+                              color: textSecondary,
+                            ) ??
+                            TextStyle(fontSize: 14, color: textSecondary),
                       ),
                     ],
                   ),
@@ -163,7 +189,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     },
                     child: Text(
                       'Forgot Password?',
-                      style: TextStyle(color: primaryColor),
+                      style: TextStyle(color: colorScheme.primary),
                     ),
                   ),
                 ),
@@ -178,22 +204,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: infoColor.withOpacity(0.1),
+                    color: colorScheme.surfaceVariant.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: infoColor.withOpacity(0.3)),
+                    border: Border.all(color: colorScheme.outline),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, color: infoColor, size: 18),
+                          Icon(
+                            Icons.info_outline,
+                            color: colorScheme.onSurfaceVariant,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Demo Credentials',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: infoColor,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -201,11 +231,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const SizedBox(height: 8),
                       Text(
                         'Email: admin@apptriangle.com',
-                        style: TextStyle(fontSize: 13, color: textSecondary),
+                        style:
+                            textTheme.bodySmall?.copyWith(color: textPrimary) ??
+                            TextStyle(fontSize: 13, color: textPrimary),
                       ),
                       Text(
                         'Password: admin123',
-                        style: TextStyle(fontSize: 13, color: textSecondary),
+                        style:
+                            textTheme.bodySmall?.copyWith(color: textPrimary) ??
+                            TextStyle(fontSize: 13, color: textPrimary),
                       ),
                     ],
                   ),
