@@ -1,20 +1,10 @@
-# Delete Account Functionality TODO
+# Flutter Android Build Fix - Core Library Desugaring for flutter_local_notifications
 
-## Plan Overview
-Add delete account feature using soft-delete (PATCH /api/users/me with isActive: false) + logout.
-
-## Steps to Complete
-- [x] 1. Update app_constants.dart: Add `usersMeDeactivate` constant
-- [x] 2. Update user_repository.dart: Add `deactivateAccount()` method
-- [x] 3. Update auth_provider.dart: Add `deleteAccount()` notifier method
-- [x] 1. Update app_constants.dart: Add `usersMeDeactivate` constant
-- [x] 2. Update user_repository.dart: Add `deactivateAccount()` method
-- [x] 3. Update auth_provider.dart: Add `deleteAccount()` notifier method
-- [x] 4. Update more_page.dart: Add "Delete Account" menu item with confirmation dialog
-- [x] 5. Test functionality (flutter analyze passed with expected warnings)
-- [x] 6. Mark complete
-
-**Delete account functionality added successfully!**
-
-Navigate to More page → scroll to bottom → tap "Delete Account" → confirm to deactivate account and logout.
+## Steps:
+- [x] 1. Create TODO.md with plan breakdown
+- [x] 2. Edit crm_app/android/app/build.gradle.kts to enable coreLibraryDesugaringEnabled and add desugaring dependency
+- [x] 3. Run `cd crm_app && flutter clean && flutter pub get`
+- [x] 4. Test with `flutter run` ✅ Build now succeeds and app launches
+- [x] 5. Update TODO.md with completion status
+- [x] 6. Attempt completion
 
