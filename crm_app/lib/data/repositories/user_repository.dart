@@ -141,6 +141,15 @@ class UserRepository {
       data: {'newPassword': newPassword},
     );
   }
+
+  /// Deactivate current user account (soft delete)
+  Future<void> deactivateAccount() async {
+    await _apiClient.patch(
+      AppConstants.usersMeDeactivate,
+      data: {'isActive': false},
+    );
+    clearCache();
+  }
 }
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {

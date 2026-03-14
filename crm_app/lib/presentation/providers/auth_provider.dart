@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/user_repository.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated, loading }
 
@@ -22,8 +23,10 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
+  final UserRepository _userRepository;
 
-  AuthNotifier(this._authRepository) : super(const AuthState());
+  AuthNotifier(this._authRepository, this._userRepository)
+    : super(const AuthState());
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(status: AuthStatus.loading);
@@ -63,6 +66,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _authRepository.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
+
+  Future<void> deleteAccount() async {
+    state = state.copyWith(status: AuthStatus.loading, error: null);
+    try {
+      await _userRepository.deactivateAccount();
+      await _authRepository.logout();
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: state.user,
+        error: 'Failed to delete account: ${e.toString()}',
+      );
+    }
+  }
 }
 
 // Helper provider to get current user ID
@@ -79,5 +97,6 @@ final isAdminProvider = Provider<bool>((ref) {
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
-  return AuthNotifier(authRepository);
+  final userRepository = ref.watch(userRepositoryProvider);
+  return AuthNotifier(authRepository, userRepository);
 });

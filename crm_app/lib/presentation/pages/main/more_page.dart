@@ -268,6 +268,66 @@ class MorePage extends ConsumerWidget {
                   }
                 },
               ),
+              _buildMenuItem(
+                icon: Icons.delete_forever,
+                title: 'Delete Account',
+                subtitle: 'Permanently delete your account',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                textTertiary: textTertiary,
+                primaryColor: primaryColor,
+                iconColor: errorColor,
+                textColor: errorColor,
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(
+                        'Delete Account',
+                        style: TextStyle(color: textPrimary),
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'This action cannot be undone!',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: errorColor,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Deleting your account will:\n• Remove all your data permanently\n• Deactivate your account\n• You will be logged out',
+                            style: TextStyle(color: textSecondary),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: primaryColor),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Text(
+                            'Delete Account',
+                            style: TextStyle(color: errorColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await ref.read(authProvider.notifier).deleteAccount();
+                  }
+                },
+              ),
             ],
           ),
           const SizedBox(height: 32),

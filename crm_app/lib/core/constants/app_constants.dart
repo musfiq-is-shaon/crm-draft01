@@ -11,6 +11,7 @@ class AppConstants {
 
   static const String users = '/api/users';
   static const String usersMe = '/api/users/me';
+  static const String usersMeDeactivate = '/api/users/me/deactivate';
 
   static const String companies = '/api/companies';
   static const String contacts = '/api/contacts';

@@ -1,14 +1,20 @@
-# Deals Page Tab Bar Update: Put 'All' at End
+# Delete Account Functionality TODO
 
-## Steps:
-- [x] 1. Edit `crm_app/lib/presentation/pages/sales/sales_list_page.dart`: 
-  - Reorder TabBar `tabs` list: Move 'All' to end.
-  - Update `statuses` list in onTap: Move `null` to end.
-  - Reorder `TabBarView` `children` list: Move first `null` child to end.
-  - ✅ Edits applied successfully.
-- [x] 2. Update this TODO.md to mark completion.
-  - ✅ TODO updated.
-- [x] 3. Test the Deals page tab functionality.
-  - ✅ Run `cd crm_app && flutter pub get && flutter run` to verify Deals tab bar has 'All' at end and functions correctly.
+## Plan Overview
+Add delete account feature using soft-delete (PATCH /api/users/me with isActive: false) + logout.
 
-Current progress: Starting implementation.
+## Steps to Complete
+- [x] 1. Update app_constants.dart: Add `usersMeDeactivate` constant
+- [x] 2. Update user_repository.dart: Add `deactivateAccount()` method
+- [x] 3. Update auth_provider.dart: Add `deleteAccount()` notifier method
+- [x] 1. Update app_constants.dart: Add `usersMeDeactivate` constant
+- [x] 2. Update user_repository.dart: Add `deactivateAccount()` method
+- [x] 3. Update auth_provider.dart: Add `deleteAccount()` notifier method
+- [x] 4. Update more_page.dart: Add "Delete Account" menu item with confirmation dialog
+- [x] 5. Test functionality (flutter analyze passed with expected warnings)
+- [x] 6. Mark complete
+
+**Delete account functionality added successfully!**
+
+Navigate to More page → scroll to bottom → tap "Delete Account" → confirm to deactivate account and logout.
+

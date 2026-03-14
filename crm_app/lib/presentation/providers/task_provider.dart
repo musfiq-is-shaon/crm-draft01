@@ -477,13 +477,79 @@ class TasksNotifier extends StateNotifier<TasksState> {
     String? note,
   }) async {
     try {
-      final task = await _taskRepository.changeTaskStatus(
+      final rawTask = await _taskRepository.changeTaskStatus(
         id: id,
         status: status,
         note: note,
       );
+
+      // Batch enrich the updated task with company and user details (like loadTasks)
+      final companyIds = <String>{};
+      final userIds = <String>{};
+
+      if (rawTask.companyId != null) {
+        companyIds.add(rawTask.companyId!);
+      }
+      if (rawTask.assignToUserId != null) {
+        userIds.add(rawTask.assignToUserId!);
+      }
+      if (rawTask.assignByUserId != null) {
+        userIds.add(rawTask.assignByUserId!);
+      }
+
+      Company? company;
+      User? assignToUser;
+      User? assignByUser;
+
+      // Batch fetch
+      final companiesFuture = companyIds.isNotEmpty
+          ? _companyRepository.getCompaniesByIds(companyIds.toList())
+          : Future.value(<String, Company>{});
+      final usersFuture = userIds.isNotEmpty
+          ? _userRepository.getUsersByIds(userIds.toList())
+          : Future.value(<String, User>{});
+
+      final List<dynamic> results = await Future.wait([
+        companiesFuture,
+        usersFuture,
+      ]);
+
+      final companiesMap = results[0] as Map<String, Company>;
+      final usersMap = results[1] as Map<String, User>;
+
+      // Map relations
+      if (rawTask.companyId != null &&
+          companiesMap.containsKey(rawTask.companyId)) {
+        company = companiesMap[rawTask.companyId];
+      }
+      if (rawTask.assignToUserId != null &&
+          usersMap.containsKey(rawTask.assignToUserId)) {
+        assignToUser = usersMap[rawTask.assignToUserId];
+      }
+      if (rawTask.assignByUserId != null &&
+          usersMap.containsKey(rawTask.assignByUserId)) {
+        assignByUser = usersMap[rawTask.assignByUserId];
+      }
+
+      final enrichedTask = Task(
+        id: rawTask.id,
+        title: rawTask.title,
+        note: rawTask.note,
+        companyId: rawTask.companyId,
+        company: company,
+        dueDatetime: rawTask.dueDatetime,
+        assignByUserId: rawTask.assignByUserId,
+        assignByUser: assignByUser,
+        assignToUserId: rawTask.assignToUserId,
+        assignToUser: assignToUser,
+        status: rawTask.status,
+        actorUserId: rawTask.actorUserId,
+        createdAt: rawTask.createdAt,
+        updatedAt: rawTask.updatedAt,
+      );
+
       final updatedTasks = state.tasks
-          .map((t) => t.id == id ? task : t)
+          .map((t) => t.id == id ? enrichedTask : t)
           .toList();
       state = state.copyWith(tasks: updatedTasks);
 

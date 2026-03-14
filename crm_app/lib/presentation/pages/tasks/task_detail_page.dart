@@ -268,6 +268,21 @@ class TaskDetailPage extends ConsumerWidget {
                   await ref
                       .read(tasksProvider.notifier)
                       .changeTaskStatus(id: task.id, status: status);
+
+                  // Fast update via single-task enrichment - no full reload needed
+
+                  // Success feedback
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Status updated to ${status.replaceAll('_', ' ').toUpperCase()}',
+                        ),
+                        backgroundColor: Colors.green,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
