@@ -1,24 +1,17 @@
-# Attendance System Integration - TODO Tracker
+# Deals Page Fix TODO
 
-## Completed (0/9)
-- [x] 1. Update pubspec.yaml + flutter pub get
-- [x] 2. Update app_constants.dart (add endpoints)
-- [x] 3. Create location_service.dart
-- [x] 4. Create attendance_model.dart
-- [x] 5. Create attendance_repository.dart
-- [x] 6. Create attendance_provider.dart
-- [x] 7. Create widgets/attendance_section.dart (reusable)
-## All Core Steps ✅ Completed!
+## Plan Overview
+Fix tabs filtering + immediate new deal display by following tasks/expenses pattern (local filtering).
 
-## Post-Implementation (Test & Polish)
-- [ ] Test GPS permission + check-in/out APIs
-- [ ] Run `flutter clean && flutter pub get && cd crm_app && flutter run`
-- [ ] Fix freezed generation: `cd crm_app && flutter pub run build_runner build --delete-conflicting-outputs`
-- [ ] Fix widget_test.dart if needed
+## Steps
+### 1. Update sales_list_page.dart ✅
+- In _buildSalesList: use state.sales → KAM filter → tab status filter → local filters.
+- Remove userFilteredSalesProvider dependency.
+### 2. Update sale_provider.dart ✅
+- createSale/updateSale/changeSaleStatus/deleteSale: add `await loadSales()` after local update.
+### 3. Test ✅
+- Ran `cd crm_app && flutter pub get && flutter run`
+### 4. Complete ✅
 
-**Attendance system fully integrated at top of dashboard!**
-- [ ] Test GPS + check-in/out
-- [ ] Error handling (no location, API fails)
-- [ ] UI polish + loading states
+**Progress: 4/4 - Deals page fixed!**
 
-**Next Step:** User approval to start Step 1.

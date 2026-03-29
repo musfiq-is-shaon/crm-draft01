@@ -63,7 +63,7 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
     final companiesState = ref.watch(companiesProvider);
     final usersState = ref.watch(usersProvider);
     final isAdmin = ref.watch(isAdminProvider);
-    final userFilteredSales = ref.watch(userFilteredSalesProvider);
+    final currentUserId = ref.watch(currentUserIdProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
@@ -236,29 +236,14 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildSalesList(salesState, 'lead', userFilteredSales, isAdmin),
-          _buildSalesList(salesState, 'prospect', userFilteredSales, isAdmin),
-          _buildSalesList(salesState, 'proposal', userFilteredSales, isAdmin),
-          _buildSalesList(
-            salesState,
-            'negotiation',
-            userFilteredSales,
-            isAdmin,
-          ),
-          _buildSalesList(salesState, 'closed_won', userFilteredSales, isAdmin),
-          _buildSalesList(
-            salesState,
-            'closed_lost',
-            userFilteredSales,
-            isAdmin,
-          ),
-          _buildSalesList(
-            salesState,
-            'disqualified',
-            userFilteredSales,
-            isAdmin,
-          ),
-          _buildSalesList(salesState, null, userFilteredSales, isAdmin),
+          _buildSalesList(salesState, 'lead', isAdmin, currentUserId),
+          _buildSalesList(salesState, 'prospect', isAdmin, currentUserId),
+          _buildSalesList(salesState, 'proposal', isAdmin, currentUserId),
+          _buildSalesList(salesState, 'negotiation', isAdmin, currentUserId),
+          _buildSalesList(salesState, 'closed_won', isAdmin, currentUserId),
+          _buildSalesList(salesState, 'closed_lost', isAdmin, currentUserId),
+          _buildSalesList(salesState, 'disqualified', isAdmin, currentUserId),
+          _buildSalesList(salesState, null, isAdmin, currentUserId),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -277,8 +262,8 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
   Widget _buildSalesList(
     SalesState state,
     String? status,
-    List<Sale> userFilteredSales,
     bool isAdmin,
+    String? currentUserId,
   ) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
@@ -289,9 +274,15 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
       return const LoadingWidget();
     }
 
-    // Use user-filtered sales (by company.kamUserId) for non-admin users
-    // Admin sees all sales, regular users see only deals where they are KAM
-    var sales = isAdmin ? state.filteredSales : userFilteredSales;
+    var sales = state.sales;
+    if (!isAdmin && currentUserId != null) {
+      sales = sales
+          .where((s) => s.company?.kamUserId == currentUserId)
+          .toList();
+    }
+    if (status != null) {
+      sales = sales.where((s) => s.status == status).toList();
+    }
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {

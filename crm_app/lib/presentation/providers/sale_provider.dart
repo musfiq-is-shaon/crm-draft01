@@ -299,6 +299,7 @@ class SalesNotifier extends StateNotifier<SalesState> {
       );
 
       state = state.copyWith(sales: [saleWithCompany, ...state.sales]);
+      await loadSales();
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -359,6 +360,7 @@ class SalesNotifier extends StateNotifier<SalesState> {
           .map((s) => s.id == id ? updatedSale : s)
           .toList();
       state = state.copyWith(sales: updatedSales);
+      await loadSales();
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -397,6 +399,7 @@ class SalesNotifier extends StateNotifier<SalesState> {
           .map((s) => s.id == id ? updatedSale : s)
           .toList();
       state = state.copyWith(sales: updatedSales);
+      await loadSales();
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -407,6 +410,7 @@ class SalesNotifier extends StateNotifier<SalesState> {
       await _saleRepository.deleteSale(id);
       final updatedSales = state.sales.where((s) => s.id != id).toList();
       state = state.copyWith(sales: updatedSales);
+      await loadSales();
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
