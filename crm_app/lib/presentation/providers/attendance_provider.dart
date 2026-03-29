@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../providers/auth_provider.dart';
+import 'dart:async' show Timer;
 
 class AttendanceState {
   final TodayAttendance? todayAttendance;
@@ -36,25 +38,67 @@ class AttendanceState {
 
 class AttendanceNotifier extends StateNotifier<AttendanceState> {
   final AttendanceRepository _repository;
+  final Ref ref;
+  Timer? _refreshTimer;
 
-  AttendanceNotifier(this._repository) : super(const AttendanceState());
+  AttendanceNotifier(this._repository, this.ref)
+    : super(const AttendanceState()) {
+    // Auto-refresh every 30 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      loadToday();
+    });
+    // Initial load
+    loadToday();
+  }
 
-  /// Load today's attendance status
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Load today's attendance status with validation
   Future<void> loadToday() async {
+    final currentUserId = ref.read(currentUserIdProvider);
+    if (currentUserId == null) {
+      state = state.copyWith(isLoading: false, error: 'User not authenticated');
+      return;
+    }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final today = await _repository.getTodayAttendance();
+      final today = await _repository.getTodayAttendance(currentUserId);
+      // Validate: use safeStatus and log if suspicious
+      print(
+        '📅 Attendance loaded: ${today.safeStatus} for date ${today.date} (isToday: ${today.isToday})',
+      );
+      if (!today.isToday) {
+        print('⚠️  Warning: Attendance date ${today.date} != today');
+      }
       state = state.copyWith(todayAttendance: today, isLoading: false);
     } catch (e) {
+      print('❌ Attendance load error: $e');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
+  /// Manual refresh trigger
+  Future<void> refreshNow() async {
+    await loadToday();
+  }
+
   /// Load attendance records for period
   Future<void> loadRecords({String period = 'month'}) async {
+    final currentUserId = ref.read(currentUserIdProvider);
+    if (currentUserId == null) {
+      state = state.copyWith(isLoading: false, error: 'User not authenticated');
+      return;
+    }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final records = await _repository.getRecords(period: period);
+      final records = await _repository.getRecords(
+        currentUserId,
+        period: period,
+      );
       state = state.copyWith(
         records: records,
         period: period,
@@ -67,14 +111,22 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
 
   /// Perform check-in
   Future<void> checkIn(String location) async {
+    final currentUserId = ref.read(currentUserIdProvider);
+    if (currentUserId == null) {
+      state = state.copyWith(error: 'User not authenticated');
+      return;
+    }
     try {
-      await _repository.checkIn(location);
-      // Refresh today status
+      print('🟢 Check-in API call: userId=$currentUserId location=$location');
+      await _repository.checkIn(currentUserId, location);
+      print('🔄 Reloading after check-in...');
+      // Multiple refreshes to ensure backend sync
+      await Future.delayed(const Duration(seconds: 1));
       await loadToday();
-      // Force UI refresh
-      Future.delayed(const Duration(milliseconds: 500), () {
-        state = state.copyWith();
-      });
+      await Future.delayed(const Duration(seconds: 1));
+      await loadToday();
+      state = state.copyWith();
+      print('✅ Check-in complete, state: ${state.todayAttendance?.safeStatus}');
     } catch (e) {
       String errorMsg = 'Something went wrong. Please try again.';
       if (e.toString().contains('Already checked in')) {
@@ -92,14 +144,24 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
 
   /// Perform check-out
   Future<void> checkOut(String location) async {
+    final currentUserId = ref.read(currentUserIdProvider);
+    if (currentUserId == null) {
+      state = state.copyWith(error: 'User not authenticated');
+      return;
+    }
     try {
-      await _repository.checkOut(location);
-      // Refresh today status
+      print('🔴 Check-out API call: userId=$currentUserId location=$location');
+      await _repository.checkOut(currentUserId, location);
+      print('🔄 Reloading after check-out...');
+      // Multiple refreshes to ensure backend sync
+      await Future.delayed(const Duration(seconds: 1));
       await loadToday();
-      // Force UI refresh
-      Future.delayed(const Duration(milliseconds: 500), () {
-        state = state.copyWith();
-      });
+      await Future.delayed(const Duration(seconds: 1));
+      await loadToday();
+      state = state.copyWith();
+      print(
+        '✅ Check-out complete, state: ${state.todayAttendance?.safeStatus}',
+      );
     } catch (e) {
       String errorMsg = 'Something went wrong. Please try again.';
       if (e.toString().contains('Already checked out')) {
@@ -121,5 +183,5 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
 final attendanceProvider =
     StateNotifierProvider<AttendanceNotifier, AttendanceState>((ref) {
       final repository = ref.watch(attendanceRepositoryProvider);
-      return AttendanceNotifier(repository);
+      return AttendanceNotifier(repository, ref);
     });

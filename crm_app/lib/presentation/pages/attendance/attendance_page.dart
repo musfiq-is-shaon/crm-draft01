@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_theme_colors.dart';
-import '../../providers/attendance_provider.dart';
-import 'widgets/today_attendance_card.dart';
 import 'attendance_records_page.dart';
-import 'widgets/records_list.dart';
 
 class AttendancePage extends ConsumerStatefulWidget {
   const AttendancePage({super.key});

@@ -1,6 +1,7 @@
 import 'user_model.dart';
 
 class TodayAttendance {
+  final String userId;
   final String status; // 'pending', 'checked_in', 'checked_out', 'completed'
   final String date; // '2025-01-20'
   final DateTime? checkInTime;
@@ -12,6 +13,7 @@ class TodayAttendance {
   final String? locationOut;
 
   TodayAttendance({
+    required this.userId,
     required this.status,
     required this.date,
     this.checkInTime,
@@ -41,6 +43,7 @@ class TodayAttendance {
       }
     }
     return TodayAttendance(
+      userId: json['userId'] ?? '',
       status: json['status'] ?? 'pending',
       date: json['date'] ?? '',
       checkInTime: checkInTime,
@@ -56,9 +59,65 @@ class TodayAttendance {
   bool get isPending => status == 'pending';
   bool get isCheckedIn => status == 'checked_in';
   bool get isCheckedOut => status == 'checked_out' || status == 'completed';
+
+  /// Returns true if this attendance record is for the device's current calendar day.
+  bool get isToday {
+    if (date.isEmpty) return true;
+    final today = DateTime.now();
+    final recordDate = DateTime.tryParse(date);
+    if (recordDate != null) {
+      return recordDate.year == today.year &&
+          recordDate.month == today.month &&
+          recordDate.day == today.day;
+    }
+    final dayPart = date.contains('T') ? date.split('T').first : date;
+    final parts = dayPart.split('-');
+    if (parts.length == 3) {
+      final y = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      final d = int.tryParse(parts[2]);
+      if (y != null && m != null && d != null) {
+        return y == today.year && m == today.month && d == today.day;
+      }
+    }
+    // Lenient: unknown format on /today payload — still drive UI from times/status
+    return true;
+  }
+
+  /// Returns true if attendance has valid complete cycle
+  bool get hasValidAttendance {
+    return (checkInTime != null && checkOutTime != null) ||
+        status == 'completed';
+  }
+
+  /// Returns true if checked in but not checked out
+  bool get isIncomplete => isCheckedIn && !isCheckedOut;
+
+  String get _statusNorm => status.toLowerCase().trim();
+
+  /// Both check-in and check-out are done (times and/or API status).
+  bool get isAttendanceFlowCompleted {
+    if (checkInTime != null && checkOutTime != null) return true;
+    return _statusNorm == 'checked_out' || _statusNorm == 'completed';
+  }
+
+  /// Checked in for today but checkout still required.
+  bool get needsCheckOut {
+    if (isAttendanceFlowCompleted) return false;
+    return checkInTime != null || _statusNorm == 'checked_in';
+  }
+
+  /// Safe status for UI: pending → checked_in (still pending day) → completed.
+  String get safeStatus {
+    if (!isToday) return 'pending';
+    if (isAttendanceFlowCompleted) return 'completed';
+    if (needsCheckOut) return 'checked_in';
+    return 'pending';
+  }
 }
 
 class AttendanceRecord {
+  final String userId;
   final String id;
   final String date; // '2025-01-20'
   final DateTime? checkInTime;
@@ -71,6 +130,7 @@ class AttendanceRecord {
   final User? user; // for admin all-users view
 
   AttendanceRecord({
+    required this.userId,
     required this.id,
     required this.date,
     this.checkInTime,
@@ -85,6 +145,7 @@ class AttendanceRecord {
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
     return AttendanceRecord(
+      userId: json['userId'] ?? '',
       id: json['id']?.toString() ?? '',
       date: json['date'] ?? '',
       checkInTime: json['checkInTime'] != null

@@ -30,7 +30,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(attendanceProvider.notifier).loadToday();
+      final notifier = ref.read(attendanceProvider.notifier);
+      notifier.loadToday(); // Initial load
+      // Setup periodic refresh handled by provider
     });
   }
   // Data loading is now handled by ShellPage for better performance

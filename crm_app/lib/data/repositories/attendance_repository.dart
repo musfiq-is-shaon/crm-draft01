@@ -8,33 +8,39 @@ class AttendanceRepository {
 
   AttendanceRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
-  /// Get today's attendance status for current user
-  Future<TodayAttendance> getTodayAttendance() async {
-    final response = await _apiClient.get(AppConstants.attendanceToday);
+  /// Get today's attendance status for user
+  Future<TodayAttendance> getTodayAttendance(String userId) async {
+    final response = await _apiClient.get(
+      AppConstants.attendanceToday,
+      queryParameters: {'userId': userId},
+    );
     return TodayAttendance.fromJson(response.data);
   }
 
   /// Check-in for today
-  Future<void> checkIn(String location) async {
+  Future<void> checkIn(String userId, String location) async {
     await _apiClient.post(
       AppConstants.attendanceCheckIn,
-      data: {'location': location},
+      data: {'userId': userId, 'location': location},
     );
   }
 
   /// Check-out for today
-  Future<void> checkOut(String location) async {
+  Future<void> checkOut(String userId, String location) async {
     await _apiClient.post(
       AppConstants.attendanceCheckOut,
-      data: {'location': location},
+      data: {'userId': userId, 'location': location},
     );
   }
 
-  /// Get attendance records for current user
-  Future<List<AttendanceRecord>> getRecords({String period = 'month'}) async {
+  /// Get attendance records for user
+  Future<List<AttendanceRecord>> getRecords(
+    String userId, {
+    String period = 'month',
+  }) async {
     final response = await _apiClient.get(
       AppConstants.attendanceRecords,
-      queryParameters: {'period': period},
+      queryParameters: {'userId': userId, 'period': period},
     );
     final List<dynamic> data = response.data;
     return data.map((json) => AttendanceRecord.fromJson(json)).toList();

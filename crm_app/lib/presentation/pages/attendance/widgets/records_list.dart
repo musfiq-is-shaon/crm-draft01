@@ -232,7 +232,7 @@ Widget _TimeChip(String label, DateTime? time) {
       children: [
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
         Text(
-          time != null ? _formatTime(time!) : '--:--',
+          time != null ? _formatTime(time) : '--:--',
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ],

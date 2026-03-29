@@ -4,7 +4,6 @@ import '../../providers/theme_provider.dart';
 import '../../providers/sale_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/contact_provider.dart';
-import '../../providers/attendance_provider.dart';
 import '../dashboard/dashboard_page.dart';
 import '../sales/sales_list_page.dart';
 import '../expenses/expenses_list_page.dart';

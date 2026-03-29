@@ -4,35 +4,50 @@ import '../../../../core/theme/app_theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/attendance_provider.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../../data/models/attendance_model.dart';
 
 class TodayAttendanceCardWidget extends ConsumerWidget {
   const TodayAttendanceCardWidget({super.key});
 
-  String getStatusText(dynamic? todayAttendance) {
-    if (todayAttendance == null) return 'No attendance yet';
-    if (todayAttendance.checkOutTime != null) return 'Completed';
-    if (todayAttendance.checkInTime != null) return 'Checked In';
-    return 'Pending';
+  String getStatusText(TodayAttendance? todayAttendance) {
+    if (todayAttendance == null || todayAttendance.safeStatus == 'pending') {
+      return 'Pending';
+    }
+    if (todayAttendance.safeStatus == 'checked_in') {
+      return 'Pending';
+    }
+    return 'Completed';
   }
 
-  Color getStatusColor(BuildContext context, dynamic? todayAttendance) {
-    final errorColor = AppColors.error;
+  Color getStatusColor(BuildContext context, TodayAttendance? todayAttendance) {
     final warningColor = AppColors.warning;
     final successColor = AppColors.success;
     final primaryColor = Theme.of(context).primaryColor;
 
     if (todayAttendance == null) return Colors.grey;
-    if (todayAttendance!.isLate) return warningColor;
-    if (todayAttendance!.isCheckedOut) return successColor;
-    if (todayAttendance!.isCheckedIn) return primaryColor;
-    return Colors.grey;
+
+    // Prioritize late status, then safe status
+    if (todayAttendance.isLate) return warningColor;
+
+    switch (todayAttendance.safeStatus) {
+      case 'completed':
+      case 'checked_out':
+        return successColor;
+      case 'checked_in':
+        return primaryColor;
+      default:
+        return Colors.grey;
+    }
   }
 
-  IconData getStatusIcon(dynamic? todayAttendance) {
-    if (todayAttendance?.checkOutTime != null)
-      return Icons.check_circle_outline;
-    if (todayAttendance?.checkInTime != null) return Icons.login_outlined;
-    return Icons.schedule_outlined;
+  IconData getStatusIcon(TodayAttendance? todayAttendance) {
+    final status = todayAttendance?.safeStatus;
+    if (status == null || status == 'pending') {
+      return Icons.schedule_outlined; // Pending clock
+    } else if (status == 'checked_in') {
+      return Icons.timer_outlined; // Pending checkout timer
+    }
+    return Icons.check_circle_outline; // Completed check
   }
 
   @override
@@ -103,7 +118,7 @@ class TodayAttendanceCardWidget extends ConsumerWidget {
                     ),
                     if (todayAttendance != null)
                       Text(
-                        todayAttendance!.date,
+                        todayAttendance.date,
                         style: TextStyle(
                           fontSize: 14,
                           color: AppThemeColors.textSecondaryColor(context),
@@ -169,28 +184,28 @@ class TodayAttendanceCardWidget extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 20),
-          // Status message if already checked
-          if (todayAttendance != null && !todayAttendance.isPending) ...[
+          // Status message if already checked (validated)
+          if (todayAttendance != null &&
+              todayAttendance.safeStatus == 'completed') ...[
             Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: statusColor.withOpacity(0.3)),
+                color: statusColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: statusColor.withOpacity(0.4)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: statusColor, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(Icons.check_circle, color: statusColor, size: 24),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      (todayAttendance.checkInTime != null)
-                          ? 'Already checked in today'
-                          : 'Today\'s attendance completed',
+                    child: const Text(
+                      "Today's attendance completed",
                       style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
                       ),
                     ),
                   ),
@@ -198,61 +213,74 @@ class TodayAttendanceCardWidget extends ConsumerWidget {
               ),
             ),
           ],
-          // Action Buttons
-          Row(
-            children: [
-              if (todayAttendance == null || todayAttendance.isPending) ...[
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.login, size: 20),
-                    label: const Text('Check In'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+          // Action buttons: pending → Check In only; checked_in → Check Out only; completed → none
+          if (todayAttendance?.safeStatus != 'completed') ...[
+            const SizedBox(height: 8),
+            Builder(
+              builder: (context) {
+                final flow = todayAttendance?.safeStatus ?? 'pending';
+                final rowChildren = <Widget>[];
+                if (flow == 'pending') {
+                  rowChildren.add(
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.login, size: 20),
+                        label: const Text('Check In'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        onPressed: () => _showGpsLocationDialog(
+                          context,
+                          ref,
+                          'Check In',
+                          (location) => ref
+                              .read(attendanceProvider.notifier)
+                              .checkIn(location),
+                        ),
                       ),
                     ),
-                    onPressed: () => _showGpsLocationDialog(
-                      context,
-                      ref,
-                      'Check In',
-                      (location) => ref
-                          .read(attendanceProvider.notifier)
-                          .checkIn(location),
-                    ),
-                  ),
-                ),
-              ],
-              if (todayAttendance?.checkInTime != null &&
-                  todayAttendance?.checkOutTime == null) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.logout, size: 20),
-                    label: const Text('Check Out'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  );
+                }
+                if (flow == 'checked_in') {
+                  if (rowChildren.isNotEmpty) {
+                    rowChildren.add(const SizedBox(width: 12));
+                  }
+                  rowChildren.add(
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.logout, size: 20),
+                        label: const Text('Check Out'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        onPressed: () => _showGpsLocationDialog(
+                          context,
+                          ref,
+                          'Check Out',
+                          (location) => ref
+                              .read(attendanceProvider.notifier)
+                              .checkOut(location),
+                        ),
                       ),
                     ),
-                    onPressed: () => _showGpsLocationDialog(
-                      context,
-                      ref,
-                      'Check Out',
-                      (location) => ref
-                          .read(attendanceProvider.notifier)
-                          .checkOut(location),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+                  );
+                }
+                return Row(children: rowChildren);
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -356,7 +384,7 @@ Widget _TimeChip(String label, DateTime? time) {
           ),
         ),
         Text(
-          time != null ? _formatTime(time!) : '--:--',
+          time != null ? _formatTime(time) : '--:--',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
@@ -365,9 +393,9 @@ Widget _TimeChip(String label, DateTime? time) {
 }
 
 String _formatTime(DateTime time) {
-  final hour = time.hour.toString().padLeft(2, '0');
   final minute = time.minute.toString().padLeft(2, '0');
   final period = time.hour >= 12 ? 'PM' : 'AM';
-  final hour12 = time.hour > 12 ? time.hour - 12 : time.hour;
-  return '$hour12:${minute.padLeft(2, '0')} $period';
+  var hour12 = time.hour > 12 ? time.hour - 12 : time.hour;
+  if (hour12 == 0) hour12 = 12;
+  return '$hour12:$minute $period';
 }
