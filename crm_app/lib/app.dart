@@ -49,15 +49,8 @@ class _CRMAppState extends ConsumerState<CRMApp> {
             amoledBlack: amoledBlack,
           ),
           themeMode: themeMode,
-          // Short cross-fade — keeps feedback tight without the “heavy” long ease.
-          themeAnimationDuration: const Duration(milliseconds: 320),
-          themeAnimationCurve: Curves.easeInOutCubic,
-          themeAnimationStyle: const AnimationStyle(
-            duration: Duration(milliseconds: 320),
-            reverseDuration: Duration(milliseconds: 320),
-            curve: Curves.easeInOutCubic,
-            reverseCurve: Curves.easeInOutCubic,
-          ),
+          // Instant swap: AnimatedTheme lerp across the whole tree feels laggy on toggle.
+          themeAnimationStyle: AnimationStyle.noAnimation,
           home:
               authState.status == AuthStatus.initial ||
                   authState.status == AuthStatus.loading
