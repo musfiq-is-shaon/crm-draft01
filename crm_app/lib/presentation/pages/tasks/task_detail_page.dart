@@ -303,8 +303,7 @@ class TaskDetailPage extends ConsumerWidget {
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref, Task task) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final errorColor = const Color(0xFFEF4444);
+    final cs = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,
@@ -317,7 +316,7 @@ class TaskDetailPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: primaryColor)),
+            child: Text('Cancel', style: TextStyle(color: cs.primary)),
           ),
           TextButton(
             onPressed: () {
@@ -327,11 +326,11 @@ class TaskDetailPage extends ConsumerWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text('Task deleted successfully'),
-                  backgroundColor: primaryColor,
+                  backgroundColor: cs.inverseSurface,
                 ),
               );
             },
-            child: Text('Delete', style: TextStyle(color: errorColor)),
+            child: Text('Delete', style: TextStyle(color: cs.error)),
           ),
         ],
       ),

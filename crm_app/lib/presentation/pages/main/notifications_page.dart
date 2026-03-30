@@ -5,16 +5,33 @@ import '../../providers/notifications_provider.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
 import '../../widgets/loading_widget.dart';
 
-class NotificationsPage extends ConsumerWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Always refetch when opening this screen so each user/session sees current data.
+      ref.read(notificationsProvider.notifier).load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(notificationsProvider);
     final notifier = ref.read(notificationsProvider.notifier);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: AppThemeColors.backgroundColor(context),
@@ -60,13 +77,24 @@ class NotificationsPage extends ConsumerWidget {
                           return Card(
                             margin: EdgeInsets.zero,
                             child: ListTile(
-                              leading: Icon(
-                                item.isRead
-                                    ? Icons.notifications_none
-                                    : Icons.notifications_active,
-                                color: item.isRead
-                                    ? textSecondary
-                                    : Theme.of(context).primaryColor,
+                              leading: CircleAvatar(
+                                radius: 22,
+                                backgroundColor: item.isRead
+                                    ? cs.surfaceContainerHighest
+                                    : (isDark
+                                        ? cs.primary
+                                        : cs.primary.withValues(alpha: 0.22)),
+                                child: Icon(
+                                  item.isRead
+                                      ? Icons.notifications_none_outlined
+                                      : Icons.notifications_outlined,
+                                  color: item.isRead
+                                      ? cs.onSurfaceVariant
+                                      : (isDark
+                                          ? cs.onPrimary
+                                          : cs.primary),
+                                  size: 22,
+                                ),
                               ),
                               title: Text(
                                 item.title,

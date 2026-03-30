@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notifications_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../settings/settings_page.dart';
 import '../admin/users_page.dart';
@@ -26,8 +27,9 @@ class MorePage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final errorColor = const Color(0xFFEF4444);
+    final cs = Theme.of(context).colorScheme;
+    final primaryColor = cs.primary;
+    final errorColor = cs.error;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -53,7 +55,7 @@ class MorePage extends ConsumerWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
+                    color: cs.primaryContainer,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: Center(
@@ -62,7 +64,7 @@ class MorePage extends ConsumerWidget {
                           ? user.name[0].toUpperCase()
                           : '?',
                       style: TextStyle(
-                        color: primaryColor,
+                        color: cs.onPrimaryContainer,
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
                       ),
@@ -94,7 +96,7 @@ class MorePage extends ConsumerWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
+                          color: cs.primaryContainer,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -102,7 +104,7 @@ class MorePage extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: primaryColor,
+                            color: cs.onPrimaryContainer,
                           ),
                         ),
                       ),
@@ -310,6 +312,7 @@ class MorePage extends ConsumerWidget {
                   );
                   if (confirmed == true) {
                     await ref.read(authProvider.notifier).logout();
+                    ref.invalidate(notificationsProvider);
                   }
                 },
               ),
@@ -370,6 +373,7 @@ class MorePage extends ConsumerWidget {
                   );
                   if (confirmed == true) {
                     await ref.read(authProvider.notifier).deleteAccount();
+                    ref.invalidate(notificationsProvider);
                   }
                 },
               ),
@@ -464,15 +468,17 @@ class MorePage extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color:
-                          textColor ?? textPrimary ?? const Color(0xFF1E293B),
+                      color: textColor ??
+                          textPrimary ??
+                          Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: textTertiary ?? const Color(0xFF94A3B8),
+                      color: textTertiary ??
+                          Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -480,7 +486,8 @@ class MorePage extends ConsumerWidget {
             ),
             Icon(
               Icons.chevron_right,
-              color: textTertiary ?? const Color(0xFF94A3B8),
+              color: textTertiary ??
+                  Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ],
         ),

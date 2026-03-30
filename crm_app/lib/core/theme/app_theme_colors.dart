@@ -42,27 +42,21 @@ class AppThemeColors {
     return Theme.of(context).colorScheme.outline.withOpacity(0.35);
   }
 
+  /// Unpaid expense — secondary tonal (accent-aware).
   static Color expenseUnpaidColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFFE8A82E)
-        : const Color(0xFFD9A23A);
+    return Theme.of(context).colorScheme.secondary;
   }
 
+  /// Paid expense — tertiary tonal (accent-aware).
   static Color expensePaidColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF3EC995)
-        : const Color(0xFF34A37C);
+    return Theme.of(context).colorScheme.tertiary;
   }
 
   static Color expenseUnpaidBackgroundColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF2A1F08)
-        : const Color(0xFFFFF7E8);
+    return Theme.of(context).colorScheme.secondaryContainer;
   }
 
   static Color expensePaidBackgroundColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF082A1F)
-        : const Color(0xFFE8F8F0);
+    return Theme.of(context).colorScheme.tertiaryContainer;
   }
 }

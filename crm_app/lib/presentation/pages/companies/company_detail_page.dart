@@ -23,9 +23,9 @@ class CompanyDetailPage extends ConsumerWidget {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final errorColor = const Color(0xFFEF4444);
-    final accentColor = const Color(0xFF8B5CF6);
+    final cs = Theme.of(context).colorScheme;
+    final primaryColor = cs.primary;
+    final errorColor = cs.error;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -71,7 +71,7 @@ class CompanyDetailPage extends ConsumerWidget {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
+                            color: cs.primaryContainer,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Center(
@@ -82,7 +82,7 @@ class CompanyDetailPage extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 36,
                                 fontWeight: FontWeight.bold,
-                                color: primaryColor,
+                                color: cs.onPrimaryContainer,
                               ),
                             ),
                           ),
@@ -129,7 +129,7 @@ class CompanyDetailPage extends ConsumerWidget {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
+                              color: cs.tertiaryContainer,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -138,14 +138,14 @@ class CompanyDetailPage extends ConsumerWidget {
                                 Icon(
                                   Icons.person_outline,
                                   size: 16,
-                                  color: accentColor,
+                                  color: cs.onTertiaryContainer,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'KAM: ${company.kamUser!.name}',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: accentColor,
+                                    color: cs.onTertiaryContainer,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -391,7 +391,7 @@ class CompanyDetailPage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
-    final errorColor = const Color(0xFFEF4444);
+    final cs = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,
@@ -417,7 +417,7 @@ class CompanyDetailPage extends ConsumerWidget {
                 Navigator.pop(context); // Go back to list
               }
             },
-            child: Text('Delete', style: TextStyle(color: errorColor)),
+            child: Text('Delete', style: TextStyle(color: cs.error)),
           ),
         ],
       ),

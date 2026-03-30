@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme_colors.dart';
+import '../../core/theme/color_scheme_semantics.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -10,10 +10,12 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = _backgroundColor(context);
+    final fg = _foregroundColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _getBackgroundColor(context),
+        color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -21,117 +23,58 @@ class StatusBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: _getTextColor(context),
+          color: fg,
         ),
       ),
     );
   }
 
-  Color _getBackgroundColor(BuildContext context) {
+  Color _foregroundColor(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     switch (type) {
       case 'task':
         switch (status.toLowerCase()) {
           case 'pending':
-            return AppColors.taskPending.withOpacity(0.1);
+            return cs.secondary;
           case 'in_progress':
-            return AppColors.taskInProgress.withOpacity(0.1);
+            return cs.primary;
           case 'completed':
-            return AppColors.taskCompleted.withOpacity(0.1);
+            return cs.tertiary;
           case 'cancelled':
-            return AppColors.taskCancelled.withOpacity(0.1);
+            return cs.outline;
           default:
-            return AppColors.textTertiary.withOpacity(0.1);
+            return cs.onSurfaceVariant;
         }
       case 'sale':
         switch (status.toLowerCase()) {
           case 'lead':
-            return AppColors.lead.withOpacity(0.1);
+            return cs.primary;
           case 'prospect':
-            return AppColors.prospect.withOpacity(0.1);
+            return cs.tertiary;
           case 'proposal':
-            return AppColors.proposal.withOpacity(0.1);
+            return cs.secondary;
           case 'negotiation':
-            return AppColors.negotiation.withOpacity(0.1);
+            return cs.primary;
           case 'closed':
           case 'closed_won':
-            return AppColors.closedWon.withOpacity(0.1);
+            return cs.tertiary;
           case 'closed_lost':
-            return AppColors.closedLost.withOpacity(0.1);
+            return cs.error;
           case 'disqualified':
-            return AppColors.disqualified.withOpacity(0.1);
+            return cs.onSurfaceVariant;
           default:
-            return AppColors.textTertiary.withOpacity(0.1);
+            return cs.onSurfaceVariant;
         }
       case 'category':
         switch (status.toLowerCase()) {
           case 'hot':
-            return AppColors.hot.withOpacity(0.1);
+            return cs.error;
           case 'warm':
-            return AppColors.warm.withOpacity(0.1);
+            return cs.secondary;
           case 'cold':
-            return AppColors.cold.withOpacity(0.1);
+            return cs.tertiary;
           default:
-            return AppColors.textTertiary.withOpacity(0.1);
-        }
-      case 'expense':
-        switch (status.toLowerCase()) {
-          case 'unpaid':
-            return AppThemeColors.expenseUnpaidBackgroundColor(context);
-          case 'paid':
-            return AppThemeColors.expensePaidBackgroundColor(context);
-          default:
-            return AppColors.textTertiary.withOpacity(0.1);
-        }
-      default:
-        return AppColors.textTertiary.withOpacity(0.1);
-    }
-  }
-
-  Color _getTextColor(BuildContext context) {
-    switch (type) {
-      case 'task':
-        switch (status.toLowerCase()) {
-          case 'pending':
-            return AppColors.taskPending;
-          case 'in_progress':
-            return AppColors.taskInProgress;
-          case 'completed':
-            return AppColors.taskCompleted;
-          case 'cancelled':
-            return AppColors.taskCancelled;
-          default:
-            return AppColors.textTertiary;
-        }
-      case 'sale':
-        switch (status.toLowerCase()) {
-          case 'lead':
-            return AppColors.lead;
-          case 'prospect':
-            return AppColors.prospect;
-          case 'proposal':
-            return AppColors.proposal;
-          case 'negotiation':
-            return AppColors.negotiation;
-          case 'closed':
-          case 'closed_won':
-            return AppColors.closedWon;
-          case 'closed_lost':
-            return AppColors.closedLost;
-          case 'disqualified':
-            return AppColors.disqualified;
-          default:
-            return AppColors.textTertiary;
-        }
-      case 'category':
-        switch (status.toLowerCase()) {
-          case 'hot':
-            return AppColors.hot;
-          case 'warm':
-            return AppColors.warm;
-          case 'cold':
-            return AppColors.cold;
-          default:
-            return AppColors.textTertiary;
+            return cs.onSurfaceVariant;
         }
       case 'expense':
         switch (status.toLowerCase()) {
@@ -140,11 +83,26 @@ class StatusBadge extends StatelessWidget {
           case 'paid':
             return AppThemeColors.expensePaidColor(context);
           default:
-            return AppColors.textTertiary;
+            return cs.onSurfaceVariant;
         }
       default:
-        return AppColors.textTertiary;
+        return cs.onSurfaceVariant;
     }
+  }
+
+  Color _backgroundColor(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    if (type == 'expense') {
+      switch (status.toLowerCase()) {
+        case 'unpaid':
+          return AppThemeColors.expenseUnpaidBackgroundColor(context);
+        case 'paid':
+          return AppThemeColors.expensePaidBackgroundColor(context);
+        default:
+          return cs.onSurfaceVariant.withValues(alpha: 0.12);
+      }
+    }
+    return cs.tonalChipBackground(_foregroundColor(context));
   }
 
   String _getDisplayText() {

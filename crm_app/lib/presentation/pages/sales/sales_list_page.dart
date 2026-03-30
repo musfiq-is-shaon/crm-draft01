@@ -99,11 +99,11 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
         backgroundColor: surfaceColor,
         title: Text('Deals', style: TextStyle(color: textPrimary)),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(110),
+          preferredSize: const Size.fromHeight(118),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                 child: Row(
                   children: [
                     Expanded(
@@ -124,70 +124,106 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
                                 )
                               : null,
                           filled: true,
-                          fillColor: bgColor,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderColor),
+                            borderSide: BorderSide(
+                              color: borderColor.withValues(alpha: 0.6),
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderColor),
+                            borderSide: BorderSide(
+                              color: borderColor.withValues(alpha: 0.45),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: primaryColor,
+                              width: 2,
+                            ),
                           ),
                         ),
                         onChanged: (value) => setState(() {}),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: bgColor,
+                    Material(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Stack(
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.filter_list, color: textPrimary),
-                            onPressed: () => _showFilterDialog(
-                              context,
-                              companiesState,
-                              usersState,
-                            ),
-                          ),
-                          if (activeFilterCount > 0)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
+                        onTap: () => _showFilterDialog(
+                          context,
+                          companiesState,
+                          usersState,
+                        ),
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Center(
+                                child: Icon(
+                                  Icons.filter_list,
                                   color: primaryColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 14,
-                                  minHeight: 14,
-                                ),
-                                child: Text(
-                                  '$activeFilterCount',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
                                 ),
                               ),
-                            ),
-                        ],
+                              if (activeFilterCount > 0)
+                                Positioned(
+                                  right: 4,
+                                  top: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 14,
+                                    ),
+                                    child: Text(
+                                      '$activeFilterCount',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
+              ),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.45),
               ),
               TabBar(
                 controller: _tabController,

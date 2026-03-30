@@ -20,7 +20,13 @@ class NotificationItem {
   factory NotificationItem.fromJson(Map<String, dynamic> raw) {
     final json = Map<String, dynamic>.from(raw);
     return NotificationItem(
-      id: (json['id'] ?? json['_id'])?.toString() ?? '',
+      id: (json['id'] ??
+              json['_id'] ??
+              json['notificationId'] ??
+              json['notification_id'] ??
+              json['uuid'])
+          ?.toString() ??
+          '',
       title: _pickText(json, const ['title', 'subject', 'name']) ?? 'Notification',
       message: _pickText(json, const ['message', 'body', 'content']) ?? '',
       type: _pickText(json, const ['type', 'category']),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 
 class AvatarWidget extends StatelessWidget {
   final String? name;
@@ -24,14 +23,15 @@ class AvatarWidget extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildInitials(),
+          errorBuilder: (context, error, stackTrace) => _buildInitials(context),
         ),
       );
     }
-    return _buildInitials();
+    return _buildInitials(context);
   }
 
-  Widget _buildInitials() {
+  Widget _buildInitials(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     String initials = '?';
     if (name != null && name!.isNotEmpty) {
       final parts = name!.split(' ');
@@ -46,14 +46,14 @@ class AvatarWidget extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: backgroundColor ?? AppColors.primary.withOpacity(0.1),
+        color: backgroundColor ?? cs.primaryContainer,
         shape: BoxShape.circle,
       ),
       child: Center(
         child: Text(
           initials,
           style: TextStyle(
-            color: AppColors.primary,
+            color: cs.onPrimaryContainer,
             fontSize: size * 0.4,
             fontWeight: FontWeight.w600,
           ),

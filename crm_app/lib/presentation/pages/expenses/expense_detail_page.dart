@@ -24,8 +24,9 @@ class ExpenseDetailPage extends ConsumerWidget {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final errorColor = const Color(0xFFEF4444);
+    final cs = Theme.of(context).colorScheme;
+    final primaryColor = cs.primary;
+    final errorColor = cs.error;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -317,8 +318,7 @@ class ExpenseDetailPage extends ConsumerWidget {
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final errorColor = const Color(0xFFEF4444);
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,
@@ -343,7 +343,7 @@ class ExpenseDetailPage extends ConsumerWidget {
                 Navigator.pop(context); // Go back to list
               }
             },
-            child: Text('Delete', style: TextStyle(color: errorColor)),
+            child: Text('Delete', style: TextStyle(color: cs.error)),
           ),
         ],
       ),

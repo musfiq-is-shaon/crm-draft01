@@ -63,14 +63,11 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
         backgroundColor: surfaceColor,
         title: Text('Tasks', style: TextStyle(color: textPrimary)),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
+          preferredSize: const Size.fromHeight(108),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                 child: Row(
                   children: [
                     Expanded(
@@ -89,25 +86,40 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                                     ref
                                         .read(tasksProvider.notifier)
                                         .setSearchQuery(null);
+                                    setState(() {});
                                   },
                                 )
                               : null,
                           filled: true,
-                          fillColor: bgColor,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderColor),
+                            borderSide: BorderSide(
+                              color: borderColor.withValues(alpha: 0.6),
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderColor),
+                            borderSide: BorderSide(
+                              color: borderColor.withValues(alpha: 0.45),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: primaryColor,
+                              width: 2,
+                            ),
                           ),
                         ),
                         onChanged: (value) {
+                          setState(() {});
                           ref
                               .read(tasksProvider.notifier)
                               .setSearchQuery(value);
@@ -116,20 +128,34 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                     ),
                     if (isAdmin) ...[
                       const SizedBox(width: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: bgColor,
+                      Material(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.filter_list, color: textPrimary),
-                          onPressed: () => _showFilterDialog(context),
+                          onTap: () => _showFilterDialog(context),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Icon(
+                              Icons.filter_list,
+                              color: primaryColor,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ],
                 ),
+              ),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.45),
               ),
               TabBar(
                 controller: _tabController,
@@ -269,13 +295,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
 
     // Apply status filter locally (from tab selection)
     if (status != null) {
-      if (status == 'pending') {
-        tasks = tasks
-            .where((t) => t.status == 'pending' || t.status == 'in_progress')
-            .toList();
-      } else {
-        tasks = tasks.where((t) => t.status == status).toList();
-      }
+      tasks = tasks.where((t) => t.status == status).toList();
     }
 
     if (tasks.isEmpty) {
@@ -387,14 +407,14 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                         Icon(
                           Icons.calendar_today_outlined,
                           size: 14,
-                          color: _getDueDateColor(task.dueDatetime!),
+                          color: _getDueDateColor(context, task.dueDatetime!),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'Due: ${_formatDate(task.dueDatetime!)}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: _getDueDateColor(task.dueDatetime!),
+                            color: _getDueDateColor(context, task.dueDatetime!),
                           ),
                         ),
                       ],
@@ -418,14 +438,15 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
     );
   }
 
-  Color _getDueDateColor(DateTime dueDate) {
+  Color _getDueDateColor(BuildContext context, DateTime dueDate) {
+    final cs = Theme.of(context).colorScheme;
     final now = DateTime.now();
     if (dueDate.isBefore(now)) {
-      return const Color(0xFFEF4444);
+      return cs.error;
     } else if (dueDate.difference(now).inDays <= 1) {
-      return const Color(0xFFF59E0B);
+      return cs.secondary;
     }
-    return const Color(0xFF64748B);
+    return cs.onSurfaceVariant;
   }
 
   String _formatDate(DateTime date) {
@@ -599,7 +620,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
               // Apply Button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: () {
                     ref
                         .read(tasksProvider.notifier)
@@ -609,19 +630,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
                         .setDateRange(selectedStartDate, selectedEndDate);
                     Navigator.pop(context);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Apply Filters',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
+                  child: const Text('Apply Filters'),
                 ),
               ),
             ],
@@ -681,8 +690,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
   void _showDeleteConfirmation(BuildContext context, Task task) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final errorColor = const Color(0xFFEF4444);
+    final cs = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,
@@ -695,7 +703,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: primaryColor)),
+            child: Text('Cancel', style: TextStyle(color: cs.primary)),
           ),
           TextButton(
             onPressed: () {
@@ -704,11 +712,11 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text('Task deleted successfully'),
-                  backgroundColor: primaryColor,
+                  backgroundColor: cs.inverseSurface,
                 ),
               );
             },
-            child: Text('Delete', style: TextStyle(color: errorColor)),
+            child: Text('Delete', style: TextStyle(color: cs.error)),
           ),
         ],
       ),

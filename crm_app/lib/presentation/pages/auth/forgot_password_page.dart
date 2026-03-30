@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../widgets/crm_button.dart';
 import '../../widgets/crm_text_field.dart';
 
@@ -33,7 +33,6 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     });
 
     try {
-      // For now, show success - in production, call the forgot password API
       await Future.delayed(const Duration(seconds: 1));
 
       setState(() {
@@ -50,8 +49,12 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -60,48 +63,45 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Back Button
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: cs.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(color: cs.outlineVariant),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_back,
                       size: 20,
-                      color: AppColors.textPrimary,
+                      color: textPrimary,
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 32),
 
-                // Header
                 if (!_emailSent) ...[
-                  const Text(
+                  Text(
                     'Forgot Password?',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Enter your email address and we\'ll send you a link to reset your password.',
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
 
                   const SizedBox(height: 32),
 
-                  // Email Field
                   CRMTextField(
                     controller: _emailController,
                     label: 'Email Address',
@@ -124,22 +124,22 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
+                        color: cs.errorContainer,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.error_outline,
-                            color: AppColors.error,
+                            color: cs.error,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(
-                                color: AppColors.error,
+                              style: TextStyle(
+                                color: cs.onErrorContainer,
                                 fontSize: 14,
                               ),
                             ),
@@ -151,7 +151,6 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
                   const SizedBox(height: 32),
 
-                  // Send Button
                   SizedBox(
                     width: double.infinity,
                     child: CRMButton(
@@ -161,31 +160,30 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     ),
                   ),
                 ] else ...[
-                  // Success State
                   const SizedBox(height: 48),
                   Center(
                     child: Container(
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
+                        color: cs.tertiaryContainer,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.check_circle,
-                        color: AppColors.success,
+                        color: cs.onTertiaryContainer,
                         size: 48,
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Center(
+                  Center(
                     child: Text(
                       'Check Your Email',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: textPrimary,
                       ),
                     ),
                   ),
@@ -194,9 +192,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     child: Text(
                       'We have sent a password reset link to\n${_emailController.text}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textSecondary,
+                        color: textSecondary,
                       ),
                     ),
                   ),

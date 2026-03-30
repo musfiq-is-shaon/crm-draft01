@@ -70,7 +70,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primary = Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
+    final primary = cs.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -148,8 +149,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                         child: Container(
                                           width: 9,
                                           height: 9,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFEF4444),
+                                          decoration: BoxDecoration(
+                                            color: cs.error,
                                             shape: BoxShape.circle,
                                           ),
                                         ),
@@ -226,20 +227,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                 title: 'Closed Deals',
                                 value: '${salesState.closed.length}',
                                 icon: Icons.check_circle_outline,
-                                iconColor: const Color(0xFF10B981),
+                                iconColor: cs.tertiary,
                               ),
                               KPICard(
                                 title: 'Pending Tasks',
                                 value:
                                     '${tasksState.pendingTasks.length + tasksState.inProgressTasks.length}',
                                 icon: Icons.pending_actions,
-                                iconColor: const Color(0xFFF59E0B),
+                                iconColor: cs.secondary,
                               ),
                               KPICard(
                                 title: 'Contacts',
                                 value: '${contactsState.contacts.length}',
                                 icon: Icons.people_outline,
-                                iconColor: const Color(0xFF8B5CF6),
+                                iconColor: cs.tertiary,
                               ),
                             ],
                           ),
@@ -291,7 +292,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               child: _QuickActionButton(
                                 icon: Icons.receipt_outlined,
                                 label: 'Add Expense',
-                                color: const Color(0xFFF59E0B),
+                                color: cs.secondary,
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -308,7 +309,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               child: _QuickActionButton(
                                 icon: Icons.checklist_outlined,
                                 label: 'Tasks',
-                                color: const Color(0xFF8B5CF6),
+                                color: cs.tertiary,
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -349,7 +350,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                   child: _QuickActionButton(
                                     icon: Icons.people_outline,
                                     label: 'Add Contact',
-                                    color: const Color(0xFF8B5CF6),
+                                    color: cs.tertiary,
                                     onTap: () {
                                       Navigator.push(
                                         context,
@@ -370,7 +371,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                   child: _QuickActionButton(
                                     icon: Icons.task_alt,
                                     label: 'Add Task',
-                                    color: const Color(0xFFF59E0B),
+                                    color: cs.secondary,
                                     onTap: () {
                                       Navigator.push(
                                         context,
@@ -477,12 +478,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         final dueStr = task.dueDatetime != null
                             ? 'Due: ${task.dueDatetime!.day}/${task.dueDatetime!.month}'
                             : 'No due date';
-                        // Use animated theme brightness so status colors track the crossfade.
-                        final isDark =
-                            Theme.of(context).brightness == Brightness.dark;
-                        const warning = Color(0xFFF59E0B);
-                        final chipBg =
-                            warning.withOpacity(isDark ? 0.22 : 0.12);
+                        final accent = cs.secondary;
+                        final chipBg = accent.withValues(alpha: 0.12);
                         return Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -504,7 +501,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                   width: 4,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: warning,
+                                    color: accent,
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -535,7 +532,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                           dueStr,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: warning,
+                                            color: accent,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -557,7 +554,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
-                                      color: warning,
+                                      color: accent,
                                     ),
                                   ),
                                 ),
@@ -660,10 +657,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     color: task.status == 'completed'
-                                        ? const Color(0xFF10B981)
+                                        ? cs.tertiary
                                         : task.status == 'in_progress'
                                         ? primary
-                                        : const Color(0xFFF59E0B),
+                                        : cs.secondary,
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -698,14 +695,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: task.status == 'completed'
-                                        ? const Color(
-                                            0xFF10B981,
-                                          ).withOpacity(0.1)
+                                        ? cs.tertiary.withValues(alpha: 0.12)
                                         : task.status == 'in_progress'
-                                        ? primary.withOpacity(0.1)
-                                        : const Color(
-                                            0xFFF59E0B,
-                                          ).withOpacity(0.1),
+                                        ? primary.withValues(alpha: 0.12)
+                                        : cs.secondary.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -714,10 +707,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                       color: task.status == 'completed'
-                                          ? const Color(0xFF10B981)
+                                          ? cs.tertiary
                                           : task.status == 'in_progress'
                                           ? primary
-                                          : const Color(0xFFF59E0B),
+                                          : cs.secondary,
                                     ),
                                   ),
                                 ),

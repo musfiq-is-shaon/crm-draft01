@@ -70,6 +70,7 @@ class SaleDetailPage extends ConsumerWidget {
     Color textSecondary,
     Color primaryColor,
   ) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -93,7 +94,7 @@ class SaleDetailPage extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline, color: Colors.red),
+            icon: Icon(Icons.delete_outline, color: cs.error),
             onPressed: () => _showDeleteDialog(context, ref, sale),
           ),
         ],
@@ -228,7 +229,7 @@ class SaleDetailPage extends ConsumerWidget {
                   ref,
                   sale,
                   'closed_won',
-                  const Color(0xFF10B981),
+                  cs.tertiary,
                   textPrimary,
                   textSecondary,
                   surfaceColor,
@@ -238,7 +239,7 @@ class SaleDetailPage extends ConsumerWidget {
                   ref,
                   sale,
                   'closed_lost',
-                  const Color(0xFFEF4444),
+                  cs.error,
                   textPrimary,
                   textSecondary,
                   surfaceColor,
@@ -248,7 +249,7 @@ class SaleDetailPage extends ConsumerWidget {
                   ref,
                   sale,
                   'disqualified',
-                  const Color(0xFF6B7280),
+                  cs.outline,
                   textPrimary,
                   textSecondary,
                   surfaceColor,

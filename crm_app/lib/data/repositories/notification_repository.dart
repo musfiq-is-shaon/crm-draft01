@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
@@ -21,15 +23,17 @@ class NotificationRepository {
       final fallback = await _api.get(AppConstants.notifications);
       rows = _parseList(fallback.data);
     }
-    // Debug visibility for notification payload shape at runtime.
-    print('=== NOTIFICATIONS API DEBUG ===');
-    print('responseType: ${response.data.runtimeType}');
-    print('itemsParsed: ${rows.length}');
-    if (rows.isNotEmpty) {
-      print('firstItemKeys: ${rows.first.keys.toList()}');
+    final items = <NotificationItem>[];
+    for (final raw in rows) {
+      try {
+        final item = NotificationItem.fromJson(raw);
+        if (item.id.isEmpty) continue;
+        items.add(item);
+      } catch (_) {
+        // Skip malformed rows so one bad record does not break the list for everyone.
+      }
     }
-    print('===============================');
-    return rows.map(NotificationItem.fromJson).toList();
+    return items;
   }
 
   Future<void> markAsRead(String notificationId) async {
@@ -46,6 +50,15 @@ class NotificationRepository {
 }
 
 List<Map<String, dynamic>> _parseList(dynamic body) {
+  if (body is String) {
+    final t = body.trim();
+    if (t.isEmpty) return [];
+    try {
+      return _parseList(jsonDecode(t));
+    } catch (_) {
+      return [];
+    }
+  }
   final direct = _extractList(body);
   if (direct.isNotEmpty) return direct;
   return [];
@@ -63,15 +76,31 @@ List<Map<String, dynamic>> _extractList(dynamic node) {
     for (final key in const [
       'data',
       'notifications',
+      'notification',
       'items',
       'results',
       'rows',
       'docs',
       'list',
       'payload',
+      'result',
+      'content',
+      'records',
+      'user_notifications',
     ]) {
-      final got = _extractList(m[key]);
+      final v = m[key];
+      if (v == null) continue;
+      if (v is Map) {
+        final got = _extractList(v);
+        if (got.isNotEmpty) return got;
+        continue;
+      }
+      final got = _extractList(v);
       if (got.isNotEmpty) return got;
+    }
+    // Single notification object at root (no wrapper list)
+    if (_looksLikeNotificationRow(m)) {
+      return [m];
     }
     for (final v in m.values) {
       final got = _extractList(v);
@@ -79,6 +108,19 @@ List<Map<String, dynamic>> _extractList(dynamic node) {
     }
   }
   return const [];
+}
+
+bool _looksLikeNotificationRow(Map<String, dynamic> m) {
+  final hasId = m['id'] != null ||
+      m['_id'] != null ||
+      m['notificationId'] != null ||
+      m['notification_id'] != null;
+  final hasText = m['title'] != null ||
+      m['message'] != null ||
+      m['body'] != null ||
+      m['content'] != null ||
+      m['subject'] != null;
+  return hasId && hasText;
 }
 
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {

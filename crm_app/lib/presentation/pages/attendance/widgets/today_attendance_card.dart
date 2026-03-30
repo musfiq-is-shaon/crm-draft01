@@ -2,7 +2,6 @@ import 'dart:math' show pi;
 
 import 'package:flutter/material.dart';
 import '../../../../core/services/app_haptics.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/attendance_provider.dart';
@@ -89,24 +88,22 @@ class _TodayAttendanceCardWidgetState
   }
 
   Color _statusColor(BuildContext context, TodayAttendance? todayAttendance) {
-    final warningColor = AppColors.warning;
-    final successColor = AppColors.success;
-    final primaryColor = Theme.of(context).primaryColor;
+    final cs = Theme.of(context).colorScheme;
 
-    if (todayAttendance == null) return Colors.grey;
+    if (todayAttendance == null) return cs.outline;
 
-    if (todayAttendance.isLate) return warningColor;
+    if (todayAttendance.isLate) return cs.secondary;
 
     switch (todayAttendance.safeStatus) {
       case 'completed':
       case 'checked_out':
-        return successColor;
+        return cs.tertiary;
       case 'checked_in':
-        return primaryColor;
+        return cs.primary;
       case 'no_shift':
-        return AppColors.warning;
+        return cs.secondary;
       default:
-        return Colors.grey;
+        return cs.outline;
     }
   }
 
@@ -154,7 +151,7 @@ class _TodayAttendanceCardWidgetState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(next.error!),
-              backgroundColor: AppColors.error,
+              backgroundColor: Theme.of(context).colorScheme.error,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -233,34 +230,39 @@ class _TodayAttendanceCardWidgetState
                 ),
               ),
               if (todayAttendance?.isLate == true)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.warning_amber,
-                        size: 16,
-                        color: AppColors.warning,
+                Builder(
+                  builder: (context) {
+                    final w = Theme.of(context).colorScheme.secondary;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${todayAttendance!.lateMinutes} min late',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.warning,
-                        ),
+                      decoration: BoxDecoration(
+                        color: w.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.warning_amber,
+                            size: 16,
+                            color: w,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${todayAttendance!.lateMinutes} min late',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: w,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
             ],
           ),
@@ -275,10 +277,16 @@ class _TodayAttendanceCardWidgetState
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.06),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Theme.of(context).primaryColor.withOpacity(0.2),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.22),
                     ),
                   ),
                   child: Column(
@@ -289,7 +297,7 @@ class _TodayAttendanceCardWidgetState
                           Icon(
                             Icons.schedule,
                             size: 18,
-                            color: Theme.of(context).primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -399,21 +407,24 @@ class _TodayAttendanceCardWidgetState
           const SizedBox(height: 20),
           if (todayAttendance != null &&
               todayAttendance.safeStatus == 'no_shift') ...[
-            Container(
+            Builder(
+              builder: (context) {
+                final s = Theme.of(context).colorScheme.secondary;
+                return Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.12),
+                color: Theme.of(context).colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.warning.withOpacity(0.35),
+                  color: s.withValues(alpha: 0.55),
                 ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.warning, size: 22),
+                  Icon(Icons.info_outline, color: s, size: 22),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -427,6 +438,8 @@ class _TodayAttendanceCardWidgetState
                   ),
                 ],
               ),
+                );
+              },
             ),
           ],
           // Status message if already checked (validated)
@@ -470,7 +483,7 @@ class _TodayAttendanceCardWidgetState
                   return HoldToAttendanceAction(
                     enabled: !busy,
                     label: 'Hold to check in',
-                    accentColor: Colors.green.shade600,
+                    accentColor: Theme.of(context).colorScheme.tertiary,
                     onHoldComplete: () => _fetchLocationAndSubmit(
                       context,
                       ref,
@@ -484,7 +497,7 @@ class _TodayAttendanceCardWidgetState
                   return HoldToAttendanceAction(
                     enabled: !busy,
                     label: 'Hold to check out',
-                    accentColor: Colors.red.shade600,
+                    accentColor: Theme.of(context).colorScheme.error,
                     onHoldComplete: () => _fetchLocationAndSubmit(
                       context,
                       ref,
@@ -537,7 +550,7 @@ class _TodayAttendanceCardWidgetState
             content: const Text(
               'Could not get location. Enable GPS and permissions, then try again.',
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 4),
           ),
         );

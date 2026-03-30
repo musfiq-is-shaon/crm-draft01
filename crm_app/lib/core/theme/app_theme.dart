@@ -11,24 +11,31 @@ import 'design_tokens.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData light(Color accent, [ColorScheme? dynamicLight]) =>
-      _theme(_colorScheme(accent, Brightness.light, dynamicLight));
+  static ThemeData light(Color accent, [ColorScheme? _]) =>
+      _theme(_colorScheme(accent, Brightness.light));
 
   /// [amoledBlack]: true black scaffold/nav in dark mode (OLED).
   static ThemeData dark(
     Color accent,
-    ColorScheme? dynamicDark, {
+    ColorScheme? _, {
     bool amoledBlack = false,
   }) =>
       _theme(
-        _colorScheme(accent, Brightness.dark, dynamicDark),
+        _colorScheme(accent, Brightness.dark),
         amoledBlack: amoledBlack,
       );
 
+  /// Full Material 3 tonal roles from [accent] only.
+  ///
+  /// We intentionally **do not** blend Android 12+ wallpaper colors into
+  /// this scheme: mixing wallpaper [ColorScheme] with a user-chosen accent
+  /// left **secondary**, **tertiary**, and **Container** roles tied to the
+  /// wallpaper while **primary** followed the accent — inconsistent across
+  /// the app. [DynamicColorBuilder] is still used so we can opt into
+  /// wallpaper neutrals later if needed.
   static ColorScheme _colorScheme(
     Color accent,
     Brightness brightness,
-    ColorScheme? dynamicScheme,
   ) {
     final seed = ColorScheme.fromSeed(
       seedColor: accent,
@@ -36,16 +43,7 @@ class AppTheme {
       dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
     );
 
-    if (dynamicScheme == null) {
-      return seed
-          .copyWith(
-            primary: accent,
-            onPrimary: AppColors.onAccent(accent),
-          )
-          .harmonized();
-    }
-
-    return dynamicScheme
+    return seed
         .copyWith(
           primary: accent,
           onPrimary: AppColors.onAccent(accent),
@@ -133,33 +131,53 @@ class AppTheme {
         shadowColor: Colors.transparent,
         backgroundColor: scaffoldBg,
         surfaceTintColor: amoledBlack ? Colors.transparent : cs.surfaceTint,
-        indicatorColor: cs.primaryContainer,
+        // Primary-tinted pill reads clearly on light surfaces and on OLED black.
+        indicatorColor: cs.primary.withValues(
+          alpha: isDark ? 0.24 : 0.14,
+        ),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return IconThemeData(color: cs.onPrimaryContainer, size: 24);
+            return IconThemeData(color: cs.primary, size: 24);
           }
-          return IconThemeData(color: cs.onSurfaceVariant, size: 24);
+          return IconThemeData(
+            color: cs.onSurface.withValues(
+              alpha: isDark ? 0.72 : 0.58,
+            ),
+            size: 24,
+          );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final style = gSans(fontSize: 12, fontWeight: FontWeight.w500);
           if (states.contains(WidgetState.selected)) {
             return style.copyWith(
-              color: cs.onPrimaryContainer,
+              color: cs.primary,
               fontWeight: FontWeight.w600,
             );
           }
-          return style.copyWith(color: cs.onSurfaceVariant);
+          return style.copyWith(
+            color: cs.onSurface.withValues(
+              alpha: isDark ? 0.78 : 0.62,
+            ),
+          );
         }),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: scaffoldBg,
         selectedItemColor: cs.primary,
-        unselectedItemColor: cs.onSurfaceVariant,
+        unselectedItemColor: cs.onSurface.withValues(
+          alpha: isDark ? 0.72 : 0.58,
+        ),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         selectedLabelStyle: gSans(fontSize: 12, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: gSans(fontSize: 12, fontWeight: FontWeight.w500),
+        unselectedLabelStyle: gSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: cs.onSurface.withValues(
+            alpha: isDark ? 0.78 : 0.62,
+          ),
+        ),
       ),
       cardTheme: CardThemeData(
         color: cs.surfaceContainerLow,

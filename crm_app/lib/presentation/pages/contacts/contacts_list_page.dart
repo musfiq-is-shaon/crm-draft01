@@ -47,8 +47,9 @@ class _ContactsListPageState extends ConsumerState<ContactsListPage> {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final secondaryColor = const Color(0xFF10B981);
+    final cs = Theme.of(context).colorScheme;
+    final primaryColor = cs.primary;
+    final secondaryColor = cs.tertiary;
 
     return Scaffold(
       backgroundColor: bgColor,

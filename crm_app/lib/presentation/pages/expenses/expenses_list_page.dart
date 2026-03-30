@@ -53,28 +53,41 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
         backgroundColor: surfaceColor,
         title: Text('Expenses', style: TextStyle(color: textPrimary)),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: TabBar(
-            controller: _tabController,
-            isScrollable: false,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            automaticIndicatorColorAdjustment: false,
-            labelColor: primaryColor,
-            unselectedLabelColor: textSecondary,
-            indicatorColor: primaryColor,
-            indicatorSize: TabBarIndicatorSize.label,
-            dividerColor: Colors.transparent,
-            tabs: const [
-              Tab(text: 'Unpaid'),
-              Tab(text: 'Paid'),
-              Tab(text: 'All'),
+          preferredSize: const Size.fromHeight(49),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.45),
+              ),
+              TabBar(
+                controller: _tabController,
+                isScrollable: false,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                automaticIndicatorColorAdjustment: false,
+                labelColor: primaryColor,
+                unselectedLabelColor: textSecondary,
+                indicatorColor: primaryColor,
+                indicatorSize: TabBarIndicatorSize.label,
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: 'Unpaid'),
+                  Tab(text: 'Paid'),
+                  Tab(text: 'All'),
+                ],
+                onTap: (index) {
+                  final statuses = ['unpaid', 'paid', null];
+                  ref
+                      .read(expensesProvider.notifier)
+                      .setStatusFilter(statuses[index]);
+                },
+              ),
             ],
-            onTap: (index) {
-              final statuses = ['unpaid', 'paid', null];
-              ref
-                  .read(expensesProvider.notifier)
-                  .setStatusFilter(statuses[index]);
-            },
           ),
         ),
       ),
@@ -94,7 +107,7 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
           );
         },
         backgroundColor: primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
       ),
     );
   }

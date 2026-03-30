@@ -31,9 +31,7 @@ class NotificationsState {
 const Object _sentinel = Object();
 
 class NotificationsNotifier extends StateNotifier<NotificationsState> {
-  NotificationsNotifier(this._repository) : super(const NotificationsState()) {
-    load();
-  }
+  NotificationsNotifier(this._repository) : super(const NotificationsState());
 
   final NotificationRepository _repository;
 

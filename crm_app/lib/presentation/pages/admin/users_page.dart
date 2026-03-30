@@ -25,8 +25,9 @@ class UsersPage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final accentColor = const Color(0xFF8B5CF6);
+    final cs = Theme.of(context).colorScheme;
+    final primaryColor = cs.primary;
+    final accentColor = cs.tertiary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -114,8 +115,8 @@ class UsersPage extends ConsumerWidget {
                                   ),
                                   decoration: BoxDecoration(
                                     color: user.role == 'admin'
-                                        ? accentColor.withOpacity(0.1)
-                                        : primaryColor.withOpacity(0.1),
+                                        ? cs.tertiaryContainer
+                                        : cs.primaryContainer,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -124,8 +125,8 @@ class UsersPage extends ConsumerWidget {
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                       color: user.role == 'admin'
-                                          ? accentColor
-                                          : primaryColor,
+                                          ? cs.onTertiaryContainer
+                                          : cs.onPrimaryContainer,
                                     ),
                                   ),
                                 ),

@@ -50,6 +50,7 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildSettingItem(
+                  context,
                   icon: Icons.notifications_outlined,
                   title: 'Task Deadline Alerts',
                   textPrimary: textPrimary,
@@ -71,6 +72,7 @@ class SettingsPage extends ConsumerWidget {
                   onTap: () => _showNotificationSettingsSheet(context, ref),
                 ),
                 _buildSettingItem(
+                  context,
                   icon: Icons.dark_mode_outlined,
                   title: 'Dark Mode',
                   textPrimary: textPrimary,
@@ -85,6 +87,7 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 _buildSettingItem(
+                  context,
                   icon: Icons.contrast,
                   title: 'OLED black',
                   textPrimary: textPrimary,
@@ -101,6 +104,7 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 _buildSettingItem(
+                  context,
                   icon: Icons.palette_outlined,
                   title: 'Accent color',
                   textPrimary: textPrimary,
@@ -149,6 +153,7 @@ class SettingsPage extends ConsumerWidget {
                   },
                 ),
                 _buildSettingItem(
+                  context,
                   icon: Icons.language_outlined,
                   title: 'Language',
                   textPrimary: textPrimary,
@@ -178,6 +183,7 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildSettingItem(
+                  context,
                   icon: Icons.info_outline,
                   title: 'App Version',
                   textPrimary: textPrimary,
@@ -189,6 +195,7 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 _buildSettingItem(
+                  context,
                   icon: Icons.description_outlined,
                   title: 'Terms of Service',
                   textPrimary: textPrimary,
@@ -198,6 +205,7 @@ class SettingsPage extends ConsumerWidget {
                   onTap: () {},
                 ),
                 _buildSettingItem(
+                  context,
                   icon: Icons.privacy_tip_outlined,
                   title: 'Privacy Policy',
                   textPrimary: textPrimary,
@@ -215,7 +223,8 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingItem({
+  Widget _buildSettingItem(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required Widget trailing,
@@ -237,7 +246,8 @@ class SettingsPage extends ConsumerWidget {
                 title,
                 style: TextStyle(
                   fontSize: 15,
-                  color: textPrimary ?? const Color(0xFF1E293B),
+                  color:
+                      textPrimary ?? Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
