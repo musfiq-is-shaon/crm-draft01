@@ -4,6 +4,9 @@ import '../../data/models/attendance_model.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../providers/auth_provider.dart';
 
+/// Sentinel so [AttendanceState.copyWith] can distinguish "omit" from explicit null.
+enum _LocalField { unset }
+
 class AttendanceState {
   final TodayAttendance? todayAttendance;
   final List<AttendanceRecord> records;
@@ -33,8 +36,8 @@ class AttendanceState {
     bool? isLoading,
     String? error,
     String? period,
-    String? localCheckInLocation,
-    String? localCheckOutLocation,
+    Object? localCheckInLocation = _LocalField.unset,
+    Object? localCheckOutLocation = _LocalField.unset,
   }) {
     return AttendanceState(
       todayAttendance: todayAttendance ?? this.todayAttendance,
@@ -42,10 +45,12 @@ class AttendanceState {
       isLoading: isLoading ?? this.isLoading,
       error: error,
       period: period ?? this.period,
-      localCheckInLocation:
-          localCheckInLocation ?? this.localCheckInLocation,
-      localCheckOutLocation:
-          localCheckOutLocation ?? this.localCheckOutLocation,
+      localCheckInLocation: localCheckInLocation == _LocalField.unset
+          ? this.localCheckInLocation
+          : localCheckInLocation as String?,
+      localCheckOutLocation: localCheckOutLocation == _LocalField.unset
+          ? this.localCheckOutLocation
+          : localCheckOutLocation as String?,
     );
   }
 }
@@ -53,6 +58,9 @@ class AttendanceState {
 class AttendanceNotifier extends StateNotifier<AttendanceState> {
   final AttendanceRepository _repository;
   final Ref ref;
+
+  /// Last user id we merged local fallbacks for; used to drop stale locals on account switch.
+  String? _lastLoadedUserId;
 
   AttendanceNotifier(this._repository, this.ref)
     : super(const AttendanceState()) {
@@ -64,7 +72,11 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   Future<void> loadToday() async {
     final currentUserId = ref.read(currentUserIdProvider);
     if (currentUserId == null) {
-      state = state.copyWith(isLoading: false, error: 'User not authenticated');
+      _lastLoadedUserId = null;
+      state = const AttendanceState(
+        isLoading: false,
+        error: 'User not authenticated',
+      );
       return;
     }
     state = state.copyWith(isLoading: true, error: null);
@@ -76,12 +88,15 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       final dateChanged =
           prevDate.isNotEmpty && newDate.isNotEmpty && prevDate != newDate;
 
+      final userChanged = _lastLoadedUserId != null &&
+          _lastLoadedUserId != currentUserId;
+
       final serverIn = today.locationIn?.trim() ?? '';
       final serverOut = today.locationOut?.trim() ?? '';
 
       String? mergedLocalIn;
       String? mergedLocalOut;
-      if (dateChanged) {
+      if (dateChanged || userChanged) {
         mergedLocalIn = null;
         mergedLocalOut = null;
       } else {
@@ -97,6 +112,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
                   : null);
       }
 
+      _lastLoadedUserId = currentUserId;
       state = AttendanceState(
         todayAttendance: today,
         records: state.records,
@@ -121,7 +137,11 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   Future<void> loadRecords({String period = 'month'}) async {
     final currentUserId = ref.read(currentUserIdProvider);
     if (currentUserId == null) {
-      state = state.copyWith(isLoading: false, error: 'User not authenticated');
+      _lastLoadedUserId = null;
+      state = const AttendanceState(
+        isLoading: false,
+        error: 'User not authenticated',
+      );
       return;
     }
     state = state.copyWith(isLoading: true, error: null);

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -77,6 +79,38 @@ class LocationService {
     return captured?.coordinatesString;
   }
 
+  /// Prefer a new fix over a stale fused/cached point (especially on Android).
+  static LocationSettings _attendanceLocationSettings() {
+    const timeLimit = Duration(seconds: 10);
+    if (kIsWeb) {
+      return const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: timeLimit,
+      );
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: timeLimit,
+          // Fused provider can return a recently cached fix; LocationManager tends to refresh.
+          forceLocationManager: true,
+        );
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return AppleSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: timeLimit,
+          activityType: ActivityType.other,
+        );
+      default:
+        return const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: timeLimit,
+        );
+    }
+  }
+
   Future<CapturedLocation?> getCurrentLocationForAttendance() async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -94,8 +128,7 @@ class LocationService {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: _attendanceLocationSettings(),
       );
 
       final lat = position.latitude;
