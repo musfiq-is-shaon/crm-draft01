@@ -33,6 +33,9 @@ Future<Color?> showPremiumColorPicker(
     isScrollControlled: true,
     useSafeArea: true,
     barrierColor: Colors.black54,
+    backgroundColor: Colors.transparent,
+    // Theme sets BottomSheetThemeData.showDragHandle: true — avoid a second bar in the body.
+    showDragHandle: true,
     builder: (ctx) => _PremiumColorPickerBody(
       initialColor: initialColor,
       recentColors: recentColors ?? const [],
@@ -218,9 +221,15 @@ class _PremiumColorPickerBodyState extends State<_PremiumColorPickerBody> {
     _setFromHsv(HSVColor.fromColor(c));
   }
 
+  String get _hexLabel {
+    final c = _color;
+    return '#${c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = context.colors;
+    final tt = Theme.of(context).textTheme;
     final h = MediaQuery.sizeOf(context).height * 0.92;
 
     return AnimatedPadding(
@@ -229,86 +238,140 @@ class _PremiumColorPickerBodyState extends State<_PremiumColorPickerBody> {
       child: SizedBox(
         height: h,
         child: Material(
-          color: cs.surfaceContainerHigh,
+          color: cs.surface,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 8),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withOpacity(0.35),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Accent color',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      style: tt.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, _color),
-                      child: const Text('Apply'),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Used for primary actions, toggles, and highlights.',
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                  ),
                   children: [
-                    Center(
-                      child: AnimatedContainer(
-                        key: ValueKey(_color.toARGB32()),
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        width: 112,
-                        height: 112,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: AppElevation.cardDark(_color),
-                          border: Border.all(
-                            color: cs.outlineVariant,
-                            width: 2,
-                          ),
-                          gradient: RadialGradient(
-                            colors: [_color, _color.withOpacity(0.88)],
-                          ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            _color.withValues(alpha: 0.22),
+                            cs.surfaceContainerHighest.withValues(alpha: 0.85),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.lg,
+                          horizontal: AppSpacing.md,
+                        ),
+                        child: Column(
+                          children: [
+                            AnimatedContainer(
+                              key: ValueKey(_color.toARGB32()),
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: AppElevation.cardDark(_color),
+                                border: Border.all(
+                                  color: cs.outline.withValues(alpha: 0.35),
+                                  width: 3,
+                                ),
+                                color: _color,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              _hexLabel,
+                              style: tt.titleMedium?.copyWith(
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.5,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     _TonalPalettePreview(seedColor: _color),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.lg),
                     _HueBar(
                       hsv: _hsv,
                       onChanged: (hue) => _setFromHsv(_hsv.withHue(hue)),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     _SVSquare(
                       hsv: _hsv,
                       onChanged: (s, v) =>
                           _setFromHsv(_hsv.withSaturation(s).withValue(v)),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     _AlphaSlider(
                       hsv: _hsv,
                       onChanged: (a) => _setFromHsv(_hsv.withAlpha(a)),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: cs.outlineVariant.withValues(alpha: 0.5))),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                          child: Text(
+                            'Fine-tune',
+                            style: tt.labelLarge?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: cs.outlineVariant.withValues(alpha: 0.5))),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     SegmentedButton<int>(
                       segments: const [
                         ButtonSegment(value: 0, label: Text('HEX')),
@@ -319,7 +382,7 @@ class _PremiumColorPickerBodyState extends State<_PremiumColorPickerBody> {
                       onSelectionChanged: (s) =>
                           setState(() => _inputTab = s.first),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
                     if (_inputTab == 0)
                       TextField(
                         controller: _hexCtrl,
@@ -412,17 +475,18 @@ class _PremiumColorPickerBodyState extends State<_PremiumColorPickerBody> {
                           ),
                         ],
                       ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.lg),
                     Text(
                       'Presets',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      style: tt.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.sm),
                     Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
                       children: [
                         for (final p in kPresetPalette)
                           _SwatchDot(
@@ -433,17 +497,18 @@ class _PremiumColorPickerBodyState extends State<_PremiumColorPickerBody> {
                       ],
                     ),
                     if (widget.recentColors.isNotEmpty) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.lg),
                       Text(
                         'Recent',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        style: tt.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: cs.onSurface,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpacing.sm),
                       Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
                         children: [
                           for (final p in widget.recentColors)
                             _SwatchDot(
@@ -454,6 +519,33 @@ class _PremiumColorPickerBodyState extends State<_PremiumColorPickerBody> {
                         ],
                       ),
                     ],
+                  ],
+                ),
+              ),
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(context, _color),
+                        child: const Text('Apply color'),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -478,28 +570,32 @@ class _SwatchDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline.withOpacity(0.4),
-            width: selected ? 3 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            border: Border.all(
+              color: selected
+                  ? cs.primary
+                  : cs.outline.withValues(alpha: 0.45),
+              width: selected ? 3 : 1.5,
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.38),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -534,31 +630,46 @@ class _TonalPalettePreview extends StatelessWidget {
       children: [
         Text(
           'Tonal palette',
-          style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          style: tt.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (var i = 0; i < tiles.length; i++)
-              Expanded(
-                child: Tooltip(
-                  message: tiles[i].label,
-                  child: AspectRatio(
-                    aspectRatio: 1.15,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: tiles[i].color,
-                        border: Border(
-                          right: i < tiles.length - 1
-                              ? BorderSide(color: outline.withOpacity(0.4))
-                              : BorderSide.none,
+        const SizedBox(height: AppSpacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: outline.withValues(alpha: 0.45),
+              ),
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < tiles.length; i++)
+                  Expanded(
+                    child: Tooltip(
+                      message: tiles[i].label,
+                      child: AspectRatio(
+                        aspectRatio: 1.12,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: tiles[i].color,
+                            border: Border(
+                              right: i < tiles.length - 1
+                                  ? BorderSide(
+                                      color: outline.withValues(alpha: 0.35),
+                                    )
+                                  : BorderSide.none,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -573,41 +684,60 @@ class _HueBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const thumbR = 11.0;
+    final cs = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, c) {
         final w = c.maxWidth;
+        final trackW = (w - 2 * thumbR).clamp(0.0, double.infinity);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hue', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              child: SizedBox(
-                height: 28,
-                child: Stack(
-                  children: [
-                    CustomPaint(
-                      size: Size(w, 28),
-                      painter: _HueGradientPainter(),
-                    ),
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 28,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 11,
+            Text(
+              'Hue',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.sm - 1),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: thumbR),
+                  child: SizedBox(
+                    height: 28,
+                    width: trackW,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _HueGradientPainter(),
+                          ),
                         ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 16,
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 28,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: thumbR,
+                            ),
+                            overlayShape: const RoundSliderOverlayShape(
+                              overlayRadius: 16,
+                            ),
+                          ),
+                          child: Slider(
+                            value: hsv.hue.clamp(0, 359.99),
+                            max: 359.99,
+                            onChanged: onChanged,
+                          ),
                         ),
-                      ),
-                      child: Slider(
-                        value: hsv.hue.clamp(0, 359.99),
-                        max: 359.99,
-                        onChanged: (v) => onChanged(v),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -619,21 +749,24 @@ class _HueBar extends StatelessWidget {
 }
 
 class _HueGradientPainter extends CustomPainter {
+  /// Full HSV hue sweep (0°→360°): red → yellow → green → cyan → blue → magenta → red.
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    const colors = [
-      Color(0xFFFF0000),
-      Color(0xFFFF00FF),
-      Color(0xFF0000FF),
-      Color(0xFF00FFFF),
-      Color(0xFF00FF00),
-      Color(0xFFFFFF00),
-      Color(0xFFFF0000),
-    ];
-    final shader = LinearGradient(colors: colors).createShader(rect);
-    final paint = Paint()..shader = shader;
-    canvas.drawRect(rect, paint);
+    const steps = 6;
+    final colors = <Color>[];
+    for (var i = 0; i <= steps; i++) {
+      final h = (i * 60.0) % 360.0;
+      colors.add(HSVColor.fromAHSV(1, h, 1, 1).toColor());
+    }
+    final shader = LinearGradient(
+      colors: colors,
+      stops: List<double>.generate(
+        colors.length,
+        (i) => i / (colors.length - 1),
+      ),
+    ).createShader(rect);
+    canvas.drawRect(rect, Paint()..shader = shader);
   }
 
   @override
@@ -653,33 +786,46 @@ class _SVSquare extends StatelessWidget {
       children: [
         Text(
           'Saturation & brightness',
-          style: Theme.of(context).textTheme.labelLarge,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         AspectRatio(
           aspectRatio: 1,
           child: LayoutBuilder(
             builder: (context, c) {
               final sz = c.maxWidth;
+              final outline = Theme.of(context).colorScheme.outlineVariant;
               return GestureDetector(
                 onPanDown: (d) => _handle(d.localPosition, sz),
                 onPanUpdate: (d) => _handle(d.localPosition, sz),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: SizedBox(
-                    width: sz,
-                    height: sz,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CustomPaint(painter: _SVPainter(hue: hsv.hue)),
-                        CustomPaint(
-                          painter: _SVIndicatorPainter(
-                            saturation: hsv.saturation,
-                            value: hsv.value,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: outline.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md - 1),
+                    child: SizedBox(
+                      width: sz,
+                      height: sz,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CustomPaint(painter: _SVPainter(hue: hsv.hue)),
+                          CustomPaint(
+                            painter: _SVIndicatorPainter(
+                              saturation: hsv.saturation,
+                              value: hsv.value,
+                              isDark: Theme.of(context).brightness ==
+                                  Brightness.dark,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -725,33 +871,37 @@ class _SVPainter extends CustomPainter {
 }
 
 class _SVIndicatorPainter extends CustomPainter {
-  _SVIndicatorPainter({required this.saturation, required this.value});
+  _SVIndicatorPainter({
+    required this.saturation,
+    required this.value,
+    required this.isDark,
+  });
 
   final double saturation;
   final double value;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
     final x = saturation * size.width;
     final y = (1 - value) * size.height;
-    final paint = Paint()
-      ..color = Colors.white
+    final outer = Paint()
+      ..color = isDark ? const Color(0xFFE2E8F0) : Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    canvas.drawCircle(Offset(x, y), 10, paint);
-    canvas.drawCircle(
-      Offset(x, y),
-      9,
-      Paint()
-        ..color = Colors.black.withOpacity(0.35)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
+      ..strokeWidth = 2.5;
+    final inner = Paint()
+      ..color = Colors.black.withValues(alpha: isDark ? 0.5 : 0.28)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawCircle(Offset(x, y), 10, outer);
+    canvas.drawCircle(Offset(x, y), 9, inner);
   }
 
   @override
   bool shouldRepaint(covariant _SVIndicatorPainter oldDelegate) =>
-      oldDelegate.saturation != saturation || oldDelegate.value != value;
+      oldDelegate.saturation != saturation ||
+      oldDelegate.value != value ||
+      oldDelegate.isDark != isDark;
 }
 
 class _AlphaSlider extends StatelessWidget {
@@ -762,62 +912,95 @@ class _AlphaSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = hsv.toColor().withOpacity(1);
+    const thumbR = 11.0;
+    final cs = Theme.of(context).colorScheme;
+    final base = hsv.toColor().withValues(alpha: 1);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Opacity', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 8),
+        Text(
+          'Opacity',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
         Row(
           children: [
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) {
                   final w = c.maxWidth;
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    child: SizedBox(
-                      height: 28,
-                      width: w,
-                      child: Stack(
-                        children: [
-                          CustomPaint(
-                            size: Size(w, 28),
-                            painter: _CheckerboardPainter(),
-                          ),
-                          Container(
-                            height: 28,
-                            width: w,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [base.withOpacity(0), base],
+                  final trackW = (w - 2 * thumbR).clamp(0.0, double.infinity);
+                  return DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.sm - 1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: thumbR),
+                        child: SizedBox(
+                          height: 28,
+                          width: trackW,
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: CustomPaint(
+                                  painter: _CheckerboardPainter(),
+                                ),
                               ),
-                            ),
-                          ),
-                          SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              trackHeight: 28,
-                              thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 11,
+                              Positioned.fill(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        base.withValues(alpha: 0),
+                                        base,
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
-                              overlayShape: const RoundSliderOverlayShape(
-                                overlayRadius: 16,
+                              SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 28,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: thumbR,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 16,
+                                  ),
+                                ),
+                                child: Slider(
+                                  value: hsv.alpha.clamp(0, 1),
+                                  onChanged: onChanged,
+                                ),
                               ),
-                            ),
-                            child: Slider(
-                              value: hsv.alpha.clamp(0, 1),
-                              onChanged: onChanged,
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(width: 12),
-            Text('${(hsv.alpha * 100).round()}%'),
+            const SizedBox(width: AppSpacing.sm),
+            SizedBox(
+              width: 40,
+              child: Text(
+                '${(hsv.alpha * 100).round()}%',
+                textAlign: TextAlign.end,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+              ),
+            ),
           ],
         ),
       ],
