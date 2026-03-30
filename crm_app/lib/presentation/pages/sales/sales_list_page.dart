@@ -70,7 +70,7 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     // Count active filters
     int activeFilterCount = 0;
@@ -273,7 +273,7 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     if (state.isLoading) {
       return const LoadingWidget();
@@ -499,7 +499,7 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     // Local state for the dialog
     String? localSelectedStatus = _selectedStatus;

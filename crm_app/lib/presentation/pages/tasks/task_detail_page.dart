@@ -35,7 +35,7 @@ class TaskDetailPage extends ConsumerWidget {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -303,7 +303,7 @@ class TaskDetailPage extends ConsumerWidget {
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref, Task task) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final errorColor = const Color(0xFFEF4444);
 
     showDialog(
@@ -447,7 +447,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
@@ -702,7 +702,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,

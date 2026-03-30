@@ -23,7 +23,7 @@ class CompanyDetailPage extends ConsumerWidget {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final errorColor = const Color(0xFFEF4444);
     final accentColor = const Color(0xFF8B5CF6);
 

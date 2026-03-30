@@ -45,7 +45,7 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -103,6 +103,7 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     if (state.isLoading) {
       return const LoadingWidget();
@@ -167,12 +168,12 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB).withOpacity(0.1),
+                          color: primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.receipt_long,
-                          color: Color(0xFF2563EB),
+                          color: primaryColor,
                           size: 24,
                         ),
                       ),

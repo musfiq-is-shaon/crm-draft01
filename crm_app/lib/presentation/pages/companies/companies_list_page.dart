@@ -54,7 +54,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -233,7 +233,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     String? selectedCountry = companiesState.countryFilter;
     String? selectedKamUserId = companiesState.kamUserIdFilter;
@@ -392,7 +392,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();

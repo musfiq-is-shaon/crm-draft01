@@ -24,7 +24,7 @@ class ExpenseDetailPage extends ConsumerWidget {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final errorColor = const Color(0xFFEF4444);
 
     return Scaffold(
@@ -318,7 +318,7 @@ class ExpenseDetailPage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final errorColor = const Color(0xFFEF4444);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     showDialog(
       context: context,

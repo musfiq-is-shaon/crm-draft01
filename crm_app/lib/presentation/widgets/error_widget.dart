@@ -13,7 +13,7 @@ class ErrorWidget extends StatelessWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final errorColor = const Color(0xFFEF4444);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Center(
       child: Padding(
@@ -80,7 +80,7 @@ class EmptyStateWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Center(
       child: Padding(

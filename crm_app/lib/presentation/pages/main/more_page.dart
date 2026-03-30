@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../settings/settings_page.dart';
@@ -25,7 +26,7 @@ class MorePage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final errorColor = const Color(0xFFEF4444);
 
     return Scaffold(
@@ -53,7 +54,7 @@ class MorePage extends ConsumerWidget {
                   height: 60,
                   decoration: BoxDecoration(
                     color: primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: Center(
                     child: Text(
@@ -123,7 +124,7 @@ class MorePage extends ConsumerWidget {
             children: [
               // Only show Users Management for admin users
               if (isAdmin)
-                _buildMenuItem(
+                _buildMenuItem(context,
                   icon: Icons.people_outline,
                   title: 'Users Management',
                   subtitle: 'Manage app users',
@@ -141,7 +142,7 @@ class MorePage extends ConsumerWidget {
                   },
                 ),
               if (isAdmin)
-                _buildMenuItem(
+                _buildMenuItem(context,
                   icon: Icons.schedule_outlined,
                   title: 'Shifts',
                   subtitle: 'Create shifts and assign staff',
@@ -158,7 +159,7 @@ class MorePage extends ConsumerWidget {
                     );
                   },
                 ),
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.access_time_outlined,
                 title: 'Attendance Records',
                 subtitle: 'View attendance history',
@@ -175,7 +176,7 @@ class MorePage extends ConsumerWidget {
                   );
                 },
               ),
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.event_note_outlined,
                 title: 'Leave',
                 subtitle: 'Apply and track leave requests',
@@ -192,7 +193,7 @@ class MorePage extends ConsumerWidget {
                   );
                 },
               ),
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.settings_outlined,
                 title: 'Settings',
                 subtitle: 'App settings',
@@ -220,7 +221,7 @@ class MorePage extends ConsumerWidget {
             textTertiary: textTertiary,
             primaryColor: primaryColor,
             children: [
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.lock_outline,
                 title: 'Change Password',
                 subtitle: 'Update your password',
@@ -230,7 +231,7 @@ class MorePage extends ConsumerWidget {
                 primaryColor: primaryColor,
                 onTap: () {},
               ),
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.notifications_outlined,
                 title: 'Notifications',
                 subtitle: 'Manage notifications',
@@ -247,7 +248,7 @@ class MorePage extends ConsumerWidget {
                   );
                 },
               ),
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.help_outline,
                 title: 'Help & Support',
                 subtitle: 'Get help',
@@ -267,7 +268,7 @@ class MorePage extends ConsumerWidget {
             textTertiary: textTertiary,
             primaryColor: primaryColor,
             children: [
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.logout,
                 title: 'Logout',
                 subtitle: 'Sign out of your account',
@@ -312,7 +313,7 @@ class MorePage extends ConsumerWidget {
                   }
                 },
               ),
-              _buildMenuItem(
+              _buildMenuItem(context,
                 icon: Icons.delete_forever,
                 title: 'Delete Account',
                 subtitle: 'Permanently delete your account',
@@ -420,7 +421,8 @@ class MorePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuItem({
+  Widget _buildMenuItem(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -432,6 +434,8 @@ class MorePage extends ConsumerWidget {
     Color? iconColor,
     Color? textColor,
   }) {
+    final accent =
+        iconColor ?? primaryColor ?? Theme.of(context).colorScheme.primary;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -441,13 +445,12 @@ class MorePage extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (iconColor ?? primaryColor ?? const Color(0xFF2563EB))
-                    .withOpacity(0.1),
+                color: accent.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
-                color: iconColor ?? primaryColor ?? const Color(0xFF2563EB),
+                color: accent,
                 size: 20,
               ),
             ),

@@ -62,12 +62,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    colorScheme.primary.withOpacity(0.07),
+                    bgColor,
+                    bgColor,
+                  ],
+                  stops: const [0.0, 0.38, 1.0],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 48),
@@ -201,9 +219,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   onPressed: _handleLogin,
                 ),
               ],
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

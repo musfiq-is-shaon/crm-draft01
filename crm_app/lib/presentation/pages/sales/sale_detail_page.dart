@@ -26,7 +26,7 @@ class SaleDetailPage extends ConsumerWidget {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return saleAsync.when(
       loading: () => Scaffold(
@@ -337,6 +337,7 @@ class SaleDetailPage extends ConsumerWidget {
                   surfaceColor,
                   textPrimary,
                   textSecondary,
+                  primaryColor,
                 ),
               ),
           ],
@@ -357,7 +358,7 @@ class SaleDetailPage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     showDialog(
       context: context,
@@ -467,6 +468,7 @@ class SaleDetailPage extends ConsumerWidget {
     Color surfaceColor,
     Color textPrimary,
     Color textSecondary,
+    Color primaryColor,
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -484,7 +486,7 @@ class SaleDetailPage extends ConsumerWidget {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
+                  color: primaryColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -731,7 +733,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
@@ -963,7 +965,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,

@@ -47,7 +47,7 @@ class _ContactsListPageState extends ConsumerState<ContactsListPage> {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final secondaryColor = const Color(0xFF10B981);
 
     return Scaffold(
@@ -59,7 +59,7 @@ class _ContactsListPageState extends ConsumerState<ContactsListPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Row(
               children: [
                 Expanded(
@@ -233,7 +233,7 @@ class _ContactsListPageState extends ConsumerState<ContactsListPage> {
     final companiesState = ref.read(companiesProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = AppThemeColors.surfaceColor(context);
 
     String? selectedCompanyId = contactsState.companyIdFilter;

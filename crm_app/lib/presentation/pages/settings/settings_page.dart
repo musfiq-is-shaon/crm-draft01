@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/accent_color_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../widgets/crm_card.dart';
+import '../../widgets/premium_color_picker.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -14,13 +16,14 @@ class SettingsPage extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
     final notificationSettings = ref.watch(notificationSettingsProvider);
+    final accent = ref.watch(accentColorProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -78,6 +81,53 @@ class SettingsPage extends ConsumerWidget {
                     },
                     activeThumbColor: primaryColor,
                   ),
+                ),
+                _buildSettingItem(
+                  icon: Icons.palette_outlined,
+                  title: 'Accent color',
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  primaryColor: primaryColor,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: accent,
+                          border: Border.all(
+                            color: AppThemeColors.borderColor(context),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accent.withOpacity(0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.chevron_right, color: textTertiary),
+                    ],
+                  ),
+                  onTap: () async {
+                    final recent =
+                        ref.read(accentColorProvider.notifier).recentColors;
+                    final picked = await showPremiumColorPicker(
+                      context,
+                      initialColor: accent,
+                      recentColors: recent,
+                    );
+                    if (picked != null && context.mounted) {
+                      await ref
+                          .read(accentColorProvider.notifier)
+                          .setAccent(picked);
+                    }
+                  },
                 ),
                 _buildSettingItem(
                   icon: Icons.language_outlined,
@@ -163,7 +213,7 @@ class SettingsPage extends ConsumerWidget {
           children: [
             Icon(
               icon,
-              color: primaryColor ?? const Color(0xFF2563EB),
+              color: primaryColor,
               size: 22,
             ),
             const SizedBox(width: 12),
@@ -188,7 +238,7 @@ class SettingsPage extends ConsumerWidget {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     int selectedDays = notificationSettings.daysBefore;
 

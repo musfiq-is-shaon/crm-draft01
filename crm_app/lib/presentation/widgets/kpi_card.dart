@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_theme_colors.dart';
+import '../../core/theme/design_tokens.dart';
+import '../../core/theme/theme_extensions.dart';
 
 class KPICard extends StatelessWidget {
   final String title;
@@ -26,27 +29,26 @@ class KPICard extends StatelessWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = context.colors.primary;
+    final accent = iconColor ?? primaryColor;
+    final shadows = context.isDark
+        ? AppElevation.cardDark(accent)
+        : AppElevation.cardLight;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: shadows,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          splashColor: accent.withOpacity(0.08),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -57,12 +59,12 @@ class KPICard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (iconColor ?? primaryColor).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: Icon(
                       icon,
-                      color: iconColor ?? primaryColor,
+                      color: accent,
                       size: 18,
                     ),
                   ),

@@ -11,6 +11,7 @@ import '../sales/sales_list_page.dart';
 import '../expenses/expenses_list_page.dart';
 import '../contacts/contacts_list_page.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/theme/design_tokens.dart';
 import 'more_page.dart';
 
 final selectedTabProvider = StateProvider<int>((ref) => 0);
@@ -113,28 +114,22 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       body: IndexedStack(index: selectedTab, children: pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: surfaceColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          boxShadow: isDarkMode ? AppElevation.navDark : AppElevation.navLight,
         ),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.only(
-              left: 0,
-              right: 8,
-              top: 8,
-              bottom: 8,
+              left: 4,
+              right: 4,
+              top: 10,
+              bottom: 10,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -220,38 +215,57 @@ class _ShellPageState extends ConsumerState<ShellPage>
     required Color textTertiary,
   }) {
     final isSelected = selectedTab == index;
-    return InkWell(
-      onTap: () {
-        ref.read(selectedTabProvider.notifier).state = index;
-        _loadTabData(index);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? primaryColor.withOpacity(0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              color: isSelected ? primaryColor : textTertiary,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          ref.read(selectedTabProvider.notifier).state = index;
+          _loadTabData(index);
+        },
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        splashColor: primaryColor.withOpacity(0.12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primaryColor.withOpacity(isDarkMode ? 0.16 : 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: isSelected
+                ? Border.all(
+                    color: primaryColor.withOpacity(isDarkMode ? 0.35 : 0.22),
+                  )
+                : null,
+            boxShadow: isSelected && isDarkMode
+                ? [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSelected ? activeIcon : icon,
                 color: isSelected ? primaryColor : textTertiary,
+                size: 24,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  letterSpacing: 0.2,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? primaryColor : textTertiary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

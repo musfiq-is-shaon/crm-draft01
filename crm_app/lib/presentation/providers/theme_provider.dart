@@ -32,14 +32,15 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
     return value == 'true';
   }
 
-  Future<void> toggleTheme() async {
+  /// Toggles immediately; persistence runs in the background so animation isn’t delayed.
+  void toggleTheme() {
     state = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    await _saveThemeMode(state == ThemeMode.dark);
+    _saveThemeMode(state == ThemeMode.dark);
   }
 
-  Future<void> setThemeMode(ThemeMode mode) async {
+  void setThemeMode(ThemeMode mode) {
     state = mode;
-    await _saveThemeMode(mode == ThemeMode.dark);
+    _saveThemeMode(mode == ThemeMode.dark);
   }
 
   bool get isDarkMode => state == ThemeMode.dark;

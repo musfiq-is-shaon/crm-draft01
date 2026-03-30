@@ -46,7 +46,7 @@ class _ProfileOverviewBodyState extends ConsumerState<ProfileOverviewBody> {
 
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     final profileName = user?.name ?? 'User';
     final email = _dash(user?.email);

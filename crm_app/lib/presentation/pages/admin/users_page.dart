@@ -25,7 +25,7 @@ class UsersPage extends ConsumerWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final accentColor = const Color(0xFF8B5CF6);
 
     return Scaffold(

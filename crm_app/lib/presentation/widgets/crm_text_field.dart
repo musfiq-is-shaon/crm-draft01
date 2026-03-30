@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
+
+import '../../core/theme/theme_extensions.dart';
 
 class CRMTextField extends StatelessWidget {
   final String label;
@@ -39,16 +40,16 @@ class CRMTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: cs.onSurfaceVariant,
+              ),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -63,6 +64,10 @@ class CRMTextField extends StatelessWidget {
           focusNode: focusNode,
           textInputAction: textInputAction,
           autofocus: autofocus,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: cs.onSurface,
+              ),
+          cursorColor: cs.primary,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon,

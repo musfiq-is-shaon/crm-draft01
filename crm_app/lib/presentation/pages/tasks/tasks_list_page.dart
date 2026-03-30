@@ -55,7 +55,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -437,7 +437,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
     final usersState = ref.read(usersProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final borderColor = AppThemeColors.borderColor(context);
 
@@ -681,7 +681,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
   void _showDeleteConfirmation(BuildContext context, Task task) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = const Color(0xFF2563EB);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final errorColor = const Color(0xFFEF4444);
 
     showDialog(
