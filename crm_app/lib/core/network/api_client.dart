@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
@@ -69,10 +70,10 @@ class ApiClient {
   }) async {
     try {
       // Debug: Print POST request
-      print('=== API POST REQUEST ===');
-      print('Path: $path');
-      print('Data: $data');
-      print('========================');
+      debugPrint('=== API POST REQUEST ===');
+      debugPrint('Path: $path');
+      debugPrint('Data: $data');
+      debugPrint('========================');
 
       return await _dio.post(
         path,
@@ -82,11 +83,11 @@ class ApiClient {
       );
     } on DioException catch (e) {
       // Debug: Print error
-      print('=== API POST ERROR ===');
-      print('Error: $e');
-      print('Response: ${e.response?.data}');
-      print('Status Code: ${e.response?.statusCode}');
-      print('======================');
+      debugPrint('=== API POST ERROR ===');
+      debugPrint('Error: $e');
+      debugPrint('Response: ${e.response?.data}');
+      debugPrint('Status Code: ${e.response?.statusCode}');
+      debugPrint('======================');
       throw _handleError(e);
     }
   }

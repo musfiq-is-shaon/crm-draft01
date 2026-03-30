@@ -323,14 +323,23 @@ class _LeaveEditPageState extends ConsumerState<LeaveEditPage> {
               style: TextStyle(color: textSecondary),
             )
           else
-            ...typeList.map(
-              (t) => RadioListTile<String>(
-                contentPadding: EdgeInsets.zero,
-                value: t.id,
-                groupValue: _leaveTypeId,
-                onChanged: (v) => setState(() => _leaveTypeId = v),
-                title: Text(t.name, style: TextStyle(color: textPrimary)),
-                activeColor: Theme.of(context).colorScheme.primary,
+            RadioGroup<String>(
+              groupValue: _leaveTypeId,
+              onChanged: (v) => setState(() => _leaveTypeId = v),
+              child: Column(
+                children: typeList
+                    .map(
+                      (t) => RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: t.id,
+                        title: Text(
+                          t.name,
+                          style: TextStyle(color: textPrimary),
+                        ),
+                        activeColor: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           TextButton(

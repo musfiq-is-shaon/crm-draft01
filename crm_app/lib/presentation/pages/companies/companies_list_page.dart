@@ -158,7 +158,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                                   width: 50,
                                   height: 50,
                                   decoration: BoxDecoration(
-                                    color: primaryColor.withOpacity(0.1),
+                                    color: primaryColor.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Center(
@@ -232,7 +232,6 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
     final usersState = ref.read(usersProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     String? selectedCountry = companiesState.countryFilter;
@@ -296,7 +295,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                     onSelected: (selected) {
                       setModalState(() => selectedCountry = null);
                     },
-                    selectedColor: primaryColor.withOpacity(0.2),
+                    selectedColor: primaryColor.withValues(alpha: 0.2),
                     checkmarkColor: primaryColor,
                   ),
                   ...companiesState.availableCountries.map(
@@ -308,7 +307,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                           () => selectedCountry = selected ? country : null,
                         );
                       },
-                      selectedColor: primaryColor.withOpacity(0.2),
+                      selectedColor: primaryColor.withValues(alpha: 0.2),
                       checkmarkColor: primaryColor,
                     ),
                   ),
@@ -335,7 +334,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                     onSelected: (selected) {
                       setModalState(() => selectedKamUserId = null);
                     },
-                    selectedColor: primaryColor.withOpacity(0.2),
+                    selectedColor: primaryColor.withValues(alpha: 0.2),
                     checkmarkColor: primaryColor,
                   ),
                   ...usersState.users.map(
@@ -347,7 +346,7 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
                           () => selectedKamUserId = selected ? user.id : null,
                         );
                       },
-                      selectedColor: primaryColor.withOpacity(0.2),
+                      selectedColor: primaryColor.withValues(alpha: 0.2),
                       checkmarkColor: primaryColor,
                     ),
                   ),
@@ -387,14 +386,12 @@ class _CompaniesListPageState extends ConsumerState<CompaniesListPage> {
   }
 
   void _showCreateCompanyDialog(BuildContext context) {
-    final usersState = ref.read(usersProvider);
     final currenciesState = ref.read(currenciesProvider);
     final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
     final locationController = TextEditingController();

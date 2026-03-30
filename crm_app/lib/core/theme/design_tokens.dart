@@ -43,13 +43,13 @@ abstract final class AppElevation {
 
   static List<BoxShadow> cardDark(Color accent) => [
     BoxShadow(
-      color: accent.withOpacity(0.08),
+      color: accent.withValues(alpha: 0.08),
       blurRadius: 14,
       offset: const Offset(0, 4),
       spreadRadius: -2,
     ),
     BoxShadow(
-      color: Colors.black.withOpacity(0.35),
+      color: Colors.black.withValues(alpha: 0.35),
       blurRadius: 10,
       offset: const Offset(0, 6),
       spreadRadius: -2,
@@ -76,15 +76,15 @@ abstract final class AppGradients {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      accent.withOpacity(0.08),
-      colorSchemeLightSurface.withOpacity(0.0),
+      accent.withValues(alpha: 0.08),
+      colorSchemeLightSurface.withValues(alpha: 0.0),
     ],
   );
 
   static LinearGradient heroDark(Color accent) => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [accent.withOpacity(0.12), const Color(0x00000000)],
+    colors: [accent.withValues(alpha: 0.12), const Color(0x00000000)],
   );
 
   static const Color colorSchemeLightSurface = Color(0xFFFFFFFF);

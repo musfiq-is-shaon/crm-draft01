@@ -69,7 +69,7 @@ class ContactDetailPage extends ConsumerWidget {
                       children: [
                         CircleAvatar(
                           radius: 40,
-                          backgroundColor: primaryColor.withOpacity(0.1),
+                          backgroundColor: primaryColor.withValues(alpha: 0.1),
                           child: Text(
                             contact.name.isNotEmpty
                                 ? contact.name[0].toUpperCase()
@@ -99,7 +99,7 @@ class ContactDetailPage extends ConsumerWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
+                            color: primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -255,7 +255,7 @@ class ContactDetailPage extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: primaryColor, size: 20),
@@ -652,7 +652,6 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -696,7 +695,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                     labelText: 'Name *',
                     labelStyle: TextStyle(color: textSecondary),
                     hintText: 'Enter contact name',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -754,7 +753,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                     labelText: 'Designation',
                     labelStyle: TextStyle(color: textSecondary),
                     hintText: 'e.g. Manager, Director',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -767,7 +766,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                     labelText: 'Mobile',
                     labelStyle: TextStyle(color: textSecondary),
                     hintText: '+1234567890',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   ),
                   keyboardType: TextInputType.phone,
                 ),
@@ -781,7 +780,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                     labelText: 'Email',
                     labelStyle: TextStyle(color: textSecondary),
                     hintText: 'john@example.com',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),

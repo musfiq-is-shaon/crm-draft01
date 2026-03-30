@@ -578,7 +578,7 @@ class SaleDetailPage extends ConsumerWidget {
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: primaryColor.withOpacity(0.3),
+                  color: primaryColor.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -1003,7 +1003,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                   style: TextStyle(color: textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Enter prospect name',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                     filled: true,
                     fillColor: surfaceColor,
                     border: OutlineInputBorder(
@@ -1084,7 +1084,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     hintText: 'Enter expected revenue',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                     prefixText: '\$ ',
                     prefixStyle: TextStyle(color: textPrimary),
                     filled: true,
@@ -1115,7 +1115,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                   style: TextStyle(color: textPrimary),
                   decoration: InputDecoration(
                     hintText: 'YYYY-MM-DD',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                     filled: true,
                     fillColor: surfaceColor,
                     border: OutlineInputBorder(

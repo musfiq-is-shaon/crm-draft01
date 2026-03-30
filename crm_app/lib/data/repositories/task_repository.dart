@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
@@ -61,9 +62,9 @@ class TaskRepository {
     };
 
     // Debug: Print the actual data being sent
-    print('=== API REQUEST: CREATE TASK ===');
-    print('Data: $data');
-    print('=================================');
+    debugPrint('=== API REQUEST: CREATE TASK ===');
+    debugPrint('Data: $data');
+    debugPrint('=================================');
 
     final response = await _apiClient.post(AppConstants.tasks, data: data);
     return Task.fromJson(response.data);

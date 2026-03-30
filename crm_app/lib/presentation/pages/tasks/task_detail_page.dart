@@ -105,7 +105,7 @@ class TaskDetailPage extends ConsumerWidget {
                           ),
                         ],
                         const SizedBox(height: 16),
-                        Divider(color: textSecondary.withOpacity(0.3)),
+                        Divider(color: textSecondary.withValues(alpha: 0.3)),
                         const SizedBox(height: 16),
                         _buildInfoRow(
                           'Company',
@@ -241,7 +241,7 @@ class TaskDetailPage extends ConsumerWidget {
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: primaryColor.withOpacity(0.3),
+                  color: primaryColor.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -408,6 +408,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
     if (picked != null) {
+      if (!mounted) return;
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(_selectedDueDate ?? DateTime.now()),
@@ -731,7 +732,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                   labelText: 'Title *',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Enter task title',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -789,7 +790,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                   labelText: 'Due Date *',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Select due date',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   suffixIcon: IconButton(
                     icon: Icon(Icons.calendar_today, color: textSecondary),
                     onPressed: _selectDueDate,
@@ -881,7 +882,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                   labelText: 'Note',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Add notes about this task',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                 ),
                 maxLines: 4,
               ),

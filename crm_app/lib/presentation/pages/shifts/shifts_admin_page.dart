@@ -25,7 +25,7 @@ class _ShiftsAdminPageState extends ConsumerState<ShiftsAdminPage> {
 
   Future<void> _openAssign(WorkShift shift) async {
     final userIdController = TextEditingController();
-    final ok = await showDialog<bool>(
+    final result = await showDialog<Object?>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Assign shift'),
@@ -71,7 +71,7 @@ class _ShiftsAdminPageState extends ConsumerState<ShiftsAdminPage> {
       ),
     );
 
-    if (ok == null || ok == false) return;
+    if (result == null || result == false) return;
 
     final uid = userIdController.text.trim();
     if (uid.isEmpty) {
@@ -84,7 +84,7 @@ class _ShiftsAdminPageState extends ConsumerState<ShiftsAdminPage> {
     }
 
     try {
-      if (ok == 'unassign') {
+      if (result == 'unassign') {
         await ref.read(shiftProvider.notifier).assignShift(
               userId: uid,
               shiftId: null,

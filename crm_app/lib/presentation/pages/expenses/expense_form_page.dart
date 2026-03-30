@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
-import '../../../data/models/expense_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -31,7 +30,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
   String? _selectedStatus;
   DateTime? _selectedDate;
   bool _isLoading = false;
-  Expense? _existingExpense;
 
   @override
   void initState() {
@@ -62,7 +60,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
     );
     if (mounted) {
       setState(() {
-        _existingExpense = expenseAsync;
         _amountController.text = expenseAsync.amount.toString();
         _amountReturnController.text =
             expenseAsync.amountReturn?.toString() ?? '';
@@ -88,14 +85,12 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
   }
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
-    final usersState = ref.read(usersProvider);
     final currenciesState = ref.read(currenciesProvider);
     final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
     final locationController = TextEditingController();
@@ -429,7 +424,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   labelText: 'Date *',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Select date',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   suffixIcon: IconButton(
                     icon: Icon(Icons.calendar_today, color: textSecondary),
                     onPressed: _selectDate,
@@ -462,7 +457,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   labelText: 'Amount *',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Enter amount',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   prefixText: '\$ ',
                   prefixStyle: TextStyle(color: textPrimary),
                 ),
@@ -576,7 +571,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                     labelText: 'Return Amount',
                     labelStyle: TextStyle(color: textSecondary),
                     hintText: 'Enter return amount',
-                    hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                     prefixText: '\$ ',
                     prefixStyle: TextStyle(color: textPrimary),
                   ),
@@ -591,7 +586,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   labelText: 'From Location',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Enter starting location',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   prefixIcon: Icon(
                     Icons.location_on_outlined,
                     color: textSecondary,
@@ -608,7 +603,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   labelText: 'To Location',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Enter destination',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   prefixIcon: Icon(Icons.location_on, color: textSecondary),
                 ),
               ),
@@ -622,7 +617,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   labelText: 'Purpose',
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Enter purpose of expense',
-                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.6)),
+                  hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                   prefixIcon: Icon(
                     Icons.description_outlined,
                     color: textSecondary,

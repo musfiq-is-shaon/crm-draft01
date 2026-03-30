@@ -315,14 +315,23 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
               ],
             )
           else
-            ...types.map(
-              (t) => RadioListTile<String>(
-                contentPadding: EdgeInsets.zero,
-                value: t.id,
-                groupValue: _leaveTypeId,
-                onChanged: (v) => setState(() => _leaveTypeId = v),
-                title: Text(t.name, style: TextStyle(color: textPrimary)),
-                activeColor: Theme.of(context).colorScheme.primary,
+            RadioGroup<String>(
+              groupValue: _leaveTypeId,
+              onChanged: (v) => setState(() => _leaveTypeId = v),
+              child: Column(
+                children: types
+                    .map(
+                      (t) => RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: t.id,
+                        title: Text(
+                          t.name,
+                          style: TextStyle(color: textPrimary),
+                        ),
+                        activeColor: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           if (types.isNotEmpty)

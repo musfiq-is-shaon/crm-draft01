@@ -301,7 +301,7 @@ class _ContactsListPageState extends ConsumerState<ContactsListPage> {
                     decoration: BoxDecoration(
                       color: surfaceColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: textSecondary.withOpacity(0.3)),
+                      border: Border.all(color: textSecondary.withValues(alpha: 0.3)),
                     ),
                     child: SearchableDropdown<Company>(
                       items: companiesState.companies,

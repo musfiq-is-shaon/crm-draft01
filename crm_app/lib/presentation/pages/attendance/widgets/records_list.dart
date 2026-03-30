@@ -36,7 +36,7 @@ class RecordsList extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: surfaceColor,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -162,7 +162,7 @@ class RecordTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(getStatusIcon(), color: statusColor, size: 24),
@@ -183,9 +183,9 @@ class RecordTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    _TimeChip('In', record.checkInTime),
+                    timeChip('In', record.checkInTime),
                     const SizedBox(width: 16),
-                    _TimeChip('Out', record.checkOutTime),
+                    timeChip('Out', record.checkOutTime),
                   ],
                 ),
                 if (record.durationHours != null)
@@ -229,11 +229,11 @@ class RecordTile extends StatelessWidget {
   }
 }
 
-Widget _TimeChip(String label, DateTime? time) {
+Widget timeChip(String label, DateTime? time) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: Colors.grey.withOpacity(0.1),
+      color: Colors.grey.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(6),
     ),
     child: Column(

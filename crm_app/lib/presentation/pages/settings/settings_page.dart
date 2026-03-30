@@ -125,7 +125,7 @@ class SettingsPage extends ConsumerWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: accent.withOpacity(0.35),
+                              color: accent.withValues(alpha: 0.35),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),

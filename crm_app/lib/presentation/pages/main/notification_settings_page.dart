@@ -49,7 +49,7 @@ class NotificationSettingsPage extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.1),
+                        color: primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -90,7 +90,7 @@ class NotificationSettingsPage extends ConsumerWidget {
                           tasksState.tasks,
                         );
                       },
-                      activeColor: primaryColor,
+                      activeThumbColor: primaryColor,
                     ),
                   ],
                 ),
@@ -298,7 +298,7 @@ class NotificationSettingsPage extends ConsumerWidget {
             else
               Icon(
                 Icons.circle_outlined,
-                color: textSecondary?.withOpacity(0.3),
+                color: textSecondary?.withValues(alpha: 0.3),
                 size: 22,
               ),
           ],

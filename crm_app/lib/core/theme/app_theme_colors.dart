@@ -32,7 +32,7 @@ class AppThemeColors {
   static Color textTertiaryColor(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Color.alphaBlend(
-      cs.onSurface.withOpacity(0.38),
+      cs.onSurface.withValues(alpha: 0.38),
       Theme.of(context).scaffoldBackgroundColor,
     );
   }
@@ -42,7 +42,7 @@ class AppThemeColors {
   }
 
   static Color dividerColor(BuildContext context) {
-    return Theme.of(context).colorScheme.outline.withOpacity(0.35);
+    return Theme.of(context).colorScheme.outline.withValues(alpha: 0.35);
   }
 
   /// Unpaid expense — secondary tonal (accent-aware).

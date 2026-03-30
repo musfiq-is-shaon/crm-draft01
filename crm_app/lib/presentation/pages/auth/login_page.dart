@@ -71,7 +71,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    colorScheme.primary.withOpacity(0.07),
+                    colorScheme.primary.withValues(alpha: 0.07),
                     bgColor,
                     bgColor,
                   ],
@@ -99,7 +99,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           gradient: LinearGradient(
                             colors: [
                               colorScheme.primary,
-                              colorScheme.primary.withOpacity(0.8),
+                              colorScheme.primary.withValues(alpha: 0.8),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -107,7 +107,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.3),
+                              color: colorScheme.primary.withValues(alpha: 0.3),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),

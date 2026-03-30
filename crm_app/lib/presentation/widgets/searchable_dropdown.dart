@@ -178,7 +178,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: widget.hintColor.withOpacity(0.2),
+                      color: widget.hintColor.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(
@@ -221,7 +221,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
           style: TextStyle(color: widget.textColor),
           decoration: InputDecoration(
             hintText: 'Search...',
-            hintStyle: TextStyle(color: widget.hintColor.withOpacity(0.6)),
+            hintStyle: TextStyle(color: widget.hintColor.withValues(alpha: 0.6)),
             prefixIcon: widget.isLoading
                 ? SizedBox(
                     width: 20,
@@ -252,18 +252,18 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: widget.hintColor.withOpacity(0.3)),
+              borderSide: BorderSide(color: widget.hintColor.withValues(alpha: 0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: widget.hintColor.withOpacity(0.3)),
+              borderSide: BorderSide(color: widget.hintColor.withValues(alpha: 0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: widget.textColor, width: 2),
             ),
             filled: true,
-            fillColor: widget.textColor.withOpacity(0.05),
+            fillColor: widget.textColor.withValues(alpha: 0.05),
           ),
           onChanged: _filterItems,
         ),
@@ -319,7 +319,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
             Icon(
               Icons.search_off,
               size: 48,
-              color: widget.hintColor.withOpacity(0.5),
+              color: widget.hintColor.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 12),
             Text(
@@ -335,7 +335,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                 'Press Enter or tap below to add new',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: widget.hintColor.withOpacity(0.6),
+                  color: widget.hintColor.withValues(alpha: 0.6),
                   fontSize: 12,
                 ),
               ),
@@ -372,8 +372,8 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isHighlighted
-              ? widget.textColor.withOpacity(0.1)
-              : (isSelected ? widget.textColor.withOpacity(0.08) : null),
+              ? widget.textColor.withValues(alpha: 0.1)
+              : (isSelected ? widget.textColor.withValues(alpha: 0.08) : null),
           border: isHighlighted
               ? Border(left: BorderSide(color: widget.textColor, width: 3))
               : null,
@@ -387,17 +387,16 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
             ],
             Expanded(
               child: widget.highlightBuilder != null
-                  ? widget.highlightBuilder!(item, _searchText) != label
-                        ? widget.highlightBuilder!(item, _searchText)!
-                        : Text(
-                            label,
-                            style: TextStyle(
-                              color: widget.textColor,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          )
+                  ? (widget.highlightBuilder!(item, _searchText) ??
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: widget.textColor,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ))
                   : _buildHighlightedText(label),
             ),
             if (isSelected)
@@ -455,7 +454,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
             style: TextStyle(
               color: widget.textColor,
               fontWeight: FontWeight.bold,
-              backgroundColor: widget.textColor.withOpacity(0.2),
+              backgroundColor: widget.textColor.withValues(alpha: 0.2),
             ),
           ),
           TextSpan(text: text.substring(endIndex)),
@@ -467,7 +466,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
   Widget _buildAddNewOption() {
     return Column(
       children: [
-        Divider(height: 1, color: widget.hintColor.withOpacity(0.2)),
+        Divider(height: 1, color: widget.hintColor.withValues(alpha: 0.2)),
         InkWell(
           onTap: () {
             _removeOverlay();
@@ -481,7 +480,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: widget.textColor.withOpacity(0.1),
+                    color: widget.textColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -536,7 +535,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
             labelText: widget.labelText,
             labelStyle: TextStyle(color: widget.hintColor),
             hintText: widget.hintText,
-            hintStyle: TextStyle(color: widget.hintColor.withOpacity(0.6)),
+            hintStyle: TextStyle(color: widget.hintColor.withValues(alpha: 0.6)),
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -562,11 +561,11 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
             fillColor: widget.dropdownColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: widget.hintColor.withOpacity(0.3)),
+              borderSide: BorderSide(color: widget.hintColor.withValues(alpha: 0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: widget.hintColor.withOpacity(0.3)),
+              borderSide: BorderSide(color: widget.hintColor.withValues(alpha: 0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -649,7 +648,7 @@ class CompanyDropdown extends StatelessWidget {
         return _CompanyAvatar(
           name: company.name,
           size: 36,
-          backgroundColor: textColor.withOpacity(0.1),
+          backgroundColor: textColor.withValues(alpha: 0.1),
           textColor: textColor,
         );
       },
@@ -741,7 +740,7 @@ class _CompanyListTile extends StatelessWidget {
           Text(
             _getLocationString(),
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.5)),
+            style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.5)),
           ),
         ],
       ],
@@ -788,7 +787,7 @@ class _CompanyListTile extends StatelessWidget {
           TextSpan(text: company.name.substring(0, startIndex)),
           TextSpan(
             text: company.name.substring(startIndex, endIndex),
-            style: TextStyle(backgroundColor: textColor.withOpacity(0.2)),
+            style: TextStyle(backgroundColor: textColor.withValues(alpha: 0.2)),
           ),
           TextSpan(text: company.name.substring(endIndex)),
         ],

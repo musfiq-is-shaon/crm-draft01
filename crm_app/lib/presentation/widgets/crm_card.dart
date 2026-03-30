@@ -26,7 +26,7 @@ class CRMCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardColor = backgroundColor ?? context.colors.surfaceContainerHigh;
-    final borderColor = context.colors.outlineVariant.withOpacity(0.65);
+    final borderColor = context.colors.outlineVariant.withValues(alpha: 0.65);
     final accent = context.colors.primary;
     final shadows = !hasShadow
         ? null
@@ -52,8 +52,8 @@ class CRMCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(borderRadius),
-          splashColor: accent.withOpacity(0.08),
-          highlightColor: accent.withOpacity(0.04),
+          splashColor: accent.withValues(alpha: 0.08),
+          highlightColor: accent.withValues(alpha: 0.04),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(AppSpacing.md),
             child: child,

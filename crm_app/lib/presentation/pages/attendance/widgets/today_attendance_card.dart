@@ -173,7 +173,7 @@ class _TodayAttendanceCardWidgetState
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -187,7 +187,7 @@ class _TodayAttendanceCardWidgetState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -371,11 +371,11 @@ class _TodayAttendanceCardWidgetState
           Row(
             children: [
               Expanded(
-                child: _TimeChip('Check In', todayAttendance?.checkInTime),
+                child: timeChip('Check In', todayAttendance?.checkInTime),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _TimeChip('Check Out', todayAttendance?.checkOutTime),
+                child: timeChip('Check Out', todayAttendance?.checkOutTime),
               ),
             ],
           ),
@@ -455,9 +455,9 @@ class _TodayAttendanceCardWidgetState
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
+                color: statusColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: statusColor.withOpacity(0.4)),
+                border: Border.all(color: statusColor.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -568,11 +568,11 @@ class _TodayAttendanceCardWidgetState
   }
 }
 
-Widget _TimeChip(String label, DateTime? time) {
+Widget timeChip(String label, DateTime? time) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Colors.grey.withOpacity(0.1),
+      color: Colors.grey.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Column(

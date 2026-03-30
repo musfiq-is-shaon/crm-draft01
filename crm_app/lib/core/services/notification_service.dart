@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -56,7 +57,7 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap - could navigate to task detail
     // The payload contains the task ID
-    print('Notification tapped: ${response.payload}');
+    debugPrint('Notification tapped: ${response.payload}');
   }
 
   Future<bool> requestPermissions() async {
@@ -105,18 +106,18 @@ class NotificationService {
     if (task.status == 'completed') return;
 
     // Debug logging
-    print('=== Scheduling Notification ===');
-    print('Task: ${task.title}');
-    print('Due: ${task.dueDatetime}');
-    print('DaysBefore: $daysBefore');
-    print('Notification Time: $notificationTime');
-    print('Now: $now');
-    print('Is in future: ${notificationTime.isAfter(now)}');
-    print('==============================');
+    debugPrint('=== Scheduling Notification ===');
+    debugPrint('Task: ${task.title}');
+    debugPrint('Due: ${task.dueDatetime}');
+    debugPrint('DaysBefore: $daysBefore');
+    debugPrint('Notification Time: $notificationTime');
+    debugPrint('Now: $now');
+    debugPrint('Is in future: ${notificationTime.isAfter(now)}');
+    debugPrint('==============================');
 
     // Don't schedule if the notification time has already passed
     if (notificationTime.isBefore(now)) {
-      print('Skipping - notification time has passed');
+      debugPrint('Skipping - notification time has passed');
       return;
     }
 
@@ -171,7 +172,7 @@ class NotificationService {
       payload: task.id,
     );
 
-    print('Notification scheduled with ID: $notificationId');
+    debugPrint('Notification scheduled with ID: $notificationId');
   }
 
   Future<void> scheduleNotificationsForTasks({

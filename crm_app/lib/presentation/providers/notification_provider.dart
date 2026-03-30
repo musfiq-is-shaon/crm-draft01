@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/network/storage_service.dart';
@@ -48,7 +49,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
         state = NotificationSettings.fromJson(json);
       }
     } catch (e) {
-      print('Error loading notification settings: $e');
+      debugPrint('Error loading notification settings: $e');
     }
   }
 
@@ -56,7 +57,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
     try {
       await _storageService.saveNotificationSettings(state.toJson());
     } catch (e) {
-      print('Error saving notification settings: $e');
+      debugPrint('Error saving notification settings: $e');
     }
   }
 

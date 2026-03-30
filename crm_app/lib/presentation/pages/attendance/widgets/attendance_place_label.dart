@@ -57,7 +57,7 @@ class _AttendancePlaceLabelState extends State<AttendancePlaceLabel> {
     final loading = widget.loadingStyle ??
         widget.textStyle.copyWith(
           fontWeight: FontWeight.w500,
-          color: widget.textStyle.color?.withOpacity(0.55),
+          color: widget.textStyle.color?.withValues(alpha: 0.55),
         );
     return FutureBuilder<String>(
       future: _future,

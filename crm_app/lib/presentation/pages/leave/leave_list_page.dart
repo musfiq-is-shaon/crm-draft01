@@ -89,7 +89,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                       onSelected: (_) => ref
                           .read(leaveProvider.notifier)
                           .setScope(LeaveListScope.mine),
-                      selectedColor: primary.withOpacity(0.25),
+                      selectedColor: primary.withValues(alpha: 0.25),
                       labelStyle: TextStyle(
                         color: state.scope == LeaveListScope.mine
                             ? primary
@@ -112,7 +112,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                         onSelected: (_) => ref
                             .read(leaveProvider.notifier)
                             .setScope(LeaveListScope.team),
-                        selectedColor: primary.withOpacity(0.25),
+                        selectedColor: primary.withValues(alpha: 0.25),
                         labelStyle: TextStyle(
                           color: state.scope == LeaveListScope.team
                               ? primary
@@ -131,7 +131,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                         onSelected: (_) => ref
                             .read(leaveProvider.notifier)
                             .setScope(LeaveListScope.all),
-                        selectedColor: primary.withOpacity(0.25),
+                        selectedColor: primary.withValues(alpha: 0.25),
                         labelStyle: TextStyle(
                           color: state.scope == LeaveListScope.all
                               ? primary
@@ -182,7 +182,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                                     'Try another tab or tap Apply',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: textSecondary.withOpacity(0.85),
+                                      color: textSecondary.withValues(alpha: 0.85),
                                     ),
                                   ),
                                 ],
@@ -466,7 +466,7 @@ class _LeaveTile extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: chipColor.withOpacity(0.12),
+                  color: chipColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -561,7 +561,7 @@ class _LeaveTile extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: chipColor.withOpacity(0.35), width: 1),
+        side: BorderSide(color: chipColor.withValues(alpha: 0.35), width: 1),
       ),
       child: onTileTap != null
           ? InkWell(

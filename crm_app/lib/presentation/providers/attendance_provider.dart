@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/location_service.dart';
 import '../../data/models/attendance_model.dart';
@@ -123,7 +124,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
         localCheckOutLocation: mergedLocalOut,
       );
     } catch (e) {
-      print('❌ Attendance load error: $e');
+      debugPrint('❌ Attendance load error: $e');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
@@ -166,7 +167,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       return;
     }
     try {
-      print(
+      debugPrint(
         '🟢 Check-in API call: userId=$currentUserId location=$coordinatesPayload',
       );
       await _repository.checkIn(coordinatesPayload);
@@ -174,14 +175,14 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       state = state.copyWith(
         localCheckInLocation: label.isNotEmpty ? label : null,
       );
-      print('🔄 Reloading after check-in...');
+      debugPrint('🔄 Reloading after check-in...');
       // Multiple refreshes to ensure backend sync
       await Future.delayed(const Duration(seconds: 1));
       await loadToday();
       await Future.delayed(const Duration(seconds: 1));
       await loadToday();
       state = state.copyWith();
-      print('✅ Check-in complete, state: ${state.todayAttendance?.safeStatus}');
+      debugPrint('✅ Check-in complete, state: ${state.todayAttendance?.safeStatus}');
     } catch (e) {
       String errorMsg = 'Something went wrong. Please try again.';
       if (e.toString().contains('Already checked in')) {
@@ -206,7 +207,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       return;
     }
     try {
-      print(
+      debugPrint(
         '🔴 Check-out API call: userId=$currentUserId location=$coordinatesPayload',
       );
       await _repository.checkOut(coordinatesPayload);
@@ -214,14 +215,14 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       state = state.copyWith(
         localCheckOutLocation: label.isNotEmpty ? label : null,
       );
-      print('🔄 Reloading after check-out...');
+      debugPrint('🔄 Reloading after check-out...');
       // Multiple refreshes to ensure backend sync
       await Future.delayed(const Duration(seconds: 1));
       await loadToday();
       await Future.delayed(const Duration(seconds: 1));
       await loadToday();
       state = state.copyWith();
-      print(
+      debugPrint(
         '✅ Check-out complete, state: ${state.todayAttendance?.safeStatus}',
       );
     } catch (e) {

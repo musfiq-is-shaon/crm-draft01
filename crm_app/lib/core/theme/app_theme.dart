@@ -61,8 +61,8 @@ class AppTheme {
       colorScheme: cs,
       scaffoldBackgroundColor: scaffoldBg,
       splashFactory: InkRipple.splashFactory,
-      splashColor: cs.primary.withOpacity(isDark ? 0.12 : 0.08),
-      highlightColor: cs.primary.withOpacity(isDark ? 0.06 : 0.04),
+      splashColor: cs.primary.withValues(alpha: isDark ? 0.12 : 0.08),
+      highlightColor: cs.primary.withValues(alpha: isDark ? 0.06 : 0.04),
       visualDensity: VisualDensity.standard,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
@@ -246,11 +246,11 @@ class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.5)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: cs.outline.withOpacity(0.45)),
+          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.45)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -272,7 +272,7 @@ class AppTheme {
         hintStyle: gSans(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: cs.onSurfaceVariant.withOpacity(0.72),
+          color: cs.onSurfaceVariant.withValues(alpha: 0.72),
         ),
         floatingLabelStyle: gSans(
           fontSize: 14,
@@ -307,7 +307,7 @@ class AppTheme {
             top: Radius.circular(AppRadius.xl),
           ),
         ),
-        dragHandleColor: cs.onSurfaceVariant.withOpacity(0.35),
+        dragHandleColor: cs.onSurfaceVariant.withValues(alpha: 0.35),
         showDragHandle: true,
       ),
       snackBarTheme: SnackBarThemeData(
@@ -329,17 +329,17 @@ class AppTheme {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return cs.primary.withOpacity(0.35);
+            return cs.primary.withValues(alpha: 0.35);
           }
           return cs.surfaceContainerHighest;
         }),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: cs.primary,
-        circularTrackColor: cs.primary.withOpacity(0.2),
+        circularTrackColor: cs.primary.withValues(alpha: 0.2),
       ),
       dividerTheme: DividerThemeData(
-        color: cs.outlineVariant.withOpacity(0.45),
+        color: cs.outlineVariant.withValues(alpha: 0.45),
         thickness: 1,
         space: 1,
       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task_model.dart';
 import '../../data/models/company_model.dart';
@@ -261,9 +262,9 @@ class TasksNotifier extends StateNotifier<TasksState> {
           .getNotificationSettings();
 
       // Debug logging
-      print('=== NOTIFICATION DEBUG ===');
-      print('Settings from storage: $notificationSettings');
-      print('Total tasks: ${tasks.length}');
+      debugPrint('=== NOTIFICATION DEBUG ===');
+      debugPrint('Settings from storage: $notificationSettings');
+      debugPrint('Total tasks: ${tasks.length}');
 
       // Default to enabled with 1 day before if not set
       final daysBefore = notificationSettings?['daysBefore'] is int
@@ -273,7 +274,7 @@ class TasksNotifier extends StateNotifier<TasksState> {
           ? notificationSettings!['enabled'] as bool
           : true;
 
-      print('Enabled: $isEnabled, Days before: $daysBefore');
+      debugPrint('Enabled: $isEnabled, Days before: $daysBefore');
 
       if (isEnabled) {
         final now = DateTime.now();
@@ -281,18 +282,18 @@ class TasksNotifier extends StateNotifier<TasksState> {
         // Filter tasks that are not completed and have upcoming deadlines
         final pendingTasks = tasks.where((task) {
           if (task.status == 'completed') {
-            print('Task "${task.title}" skipped - completed');
+            debugPrint('Task "${task.title}" skipped - completed');
             return false;
           }
           if (task.dueDatetime == null) {
-            print('Task "${task.title}" skipped - no due date');
+            debugPrint('Task "${task.title}" skipped - no due date');
             return false;
           }
 
           final daysUntilDue = task.dueDatetime!.difference(now).inDays;
           final hoursUntilDue = task.dueDatetime!.difference(now).inHours;
 
-          print(
+          debugPrint(
             'Task "${task.title}": due=${task.dueDatetime}, daysUntilDue=$daysUntilDue, hoursUntilDue=$hoursUntilDue',
           );
 
@@ -300,30 +301,30 @@ class TasksNotifier extends StateNotifier<TasksState> {
           // - Within the notification window (daysBefore)
           // - Or overdue by up to 1 day
           final shouldNotify = daysUntilDue <= daysBefore && daysUntilDue >= -1;
-          print(
+          debugPrint(
             '  -> Should notify: $shouldNotify (condition: $daysUntilDue <= $daysBefore && $daysUntilDue >= -1)',
           );
 
           return shouldNotify;
         }).toList();
 
-        print('Pending tasks for notification: ${pendingTasks.length}');
+        debugPrint('Pending tasks for notification: ${pendingTasks.length}');
 
         if (pendingTasks.isNotEmpty) {
           await notificationService.scheduleNotificationsForTasks(
             tasks: pendingTasks,
             daysBefore: daysBefore,
           );
-          print('Notifications scheduled successfully');
+          debugPrint('Notifications scheduled successfully');
         } else {
-          print('No pending tasks to notify');
+          debugPrint('No pending tasks to notify');
         }
       } else {
-        print('Notifications disabled');
+        debugPrint('Notifications disabled');
       }
-      print('=========================');
+      debugPrint('=========================');
     } catch (e) {
-      print('Error scheduling notifications: $e');
+      debugPrint('Error scheduling notifications: $e');
     }
   }
 
