@@ -135,7 +135,14 @@ class _TodayAttendanceCardWidgetState
       todayAttendance?.locationOut,
       state.localCheckOutLocation,
     );
-    final hasLocationLines = locIn.isNotEmpty || locOut.isNotEmpty;
+    // Only show location rows when that event actually happened (or optimistic local right after hold).
+    final hasCheckInEvent = todayAttendance?.checkInTime != null ||
+        (state.localCheckInLocation?.trim().isNotEmpty ?? false);
+    final hasCheckOutEvent = todayAttendance?.checkOutTime != null ||
+        (state.localCheckOutLocation?.trim().isNotEmpty ?? false);
+    final showLocIn = locIn.isNotEmpty && hasCheckInEvent;
+    final showLocOut = locOut.isNotEmpty && hasCheckOutEvent;
+    final hasLocationLines = showLocIn || showLocOut;
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final statusColor = _statusColor(context, todayAttendance);
@@ -374,7 +381,7 @@ class _TodayAttendanceCardWidgetState
           ),
           if (hasLocationLines) ...[
             const SizedBox(height: 12),
-            if (locIn.isNotEmpty)
+            if (showLocIn)
               AttendanceLocationRow(
                 icon: Icons.login_rounded,
                 caption: 'Check-in location',
@@ -382,9 +389,8 @@ class _TodayAttendanceCardWidgetState
                 textPrimary: textPrimary,
                 textSecondary: AppThemeColors.textSecondaryColor(context),
               ),
-            if (locIn.isNotEmpty && locOut.isNotEmpty)
-              const SizedBox(height: 8),
-            if (locOut.isNotEmpty)
+            if (showLocIn && showLocOut) const SizedBox(height: 8),
+            if (showLocOut)
               AttendanceLocationRow(
                 icon: Icons.logout_rounded,
                 caption: 'Check-out location',

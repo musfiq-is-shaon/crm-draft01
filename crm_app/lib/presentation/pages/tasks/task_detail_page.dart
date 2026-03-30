@@ -159,8 +159,6 @@ class TaskDetailPage extends ConsumerWidget {
                         'pending',
                         primaryColor,
                         textPrimary,
-                        textSecondary,
-                        surfaceColor,
                       ),
                       _buildStatusButton(
                         context,
@@ -169,8 +167,6 @@ class TaskDetailPage extends ConsumerWidget {
                         'in_progress',
                         primaryColor,
                         textPrimary,
-                        textSecondary,
-                        surfaceColor,
                       ),
                       _buildStatusButton(
                         context,
@@ -179,8 +175,6 @@ class TaskDetailPage extends ConsumerWidget {
                         'completed',
                         primaryColor,
                         textPrimary,
-                        textSecondary,
-                        surfaceColor,
                       ),
                       _buildStatusButton(
                         context,
@@ -189,8 +183,6 @@ class TaskDetailPage extends ConsumerWidget {
                         'cancelled',
                         primaryColor,
                         textPrimary,
-                        textSecondary,
-                        surfaceColor,
                       ),
                     ],
                   ),
@@ -232,20 +224,18 @@ class TaskDetailPage extends ConsumerWidget {
     String status,
     Color primaryColor,
     Color textPrimary,
-    Color textSecondary,
-    Color surfaceColor,
   ) {
     final isSelected = task.status == status;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       decoration: BoxDecoration(
-        color: isSelected
-            ? primaryColor
-            : (isDarkMode ? surfaceColor : Colors.white),
+        color: isSelected ? primaryColor : cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isSelected ? primaryColor : textSecondary.withOpacity(0.3),
+          color: isSelected
+              ? primaryColor
+              : cs.outlineVariant.withValues(alpha: 0.55),
           width: 1,
         ),
         boxShadow: isSelected
@@ -289,7 +279,7 @@ class TaskDetailPage extends ConsumerWidget {
             child: Text(
               status.replaceAll('_', ' ').toUpperCase(),
               style: TextStyle(
-                color: isSelected ? Colors.white : textPrimary,
+                color: isSelected ? cs.onPrimary : textPrimary,
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
               ),
@@ -440,14 +430,12 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
   }
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
-    final usersState = ref.read(usersProvider);
     final currenciesState = ref.read(currenciesProvider);
     final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
     final locationController = TextEditingController();
@@ -701,7 +689,6 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,

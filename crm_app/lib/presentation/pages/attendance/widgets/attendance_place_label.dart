@@ -70,8 +70,26 @@ class _AttendancePlaceLabelState extends State<AttendancePlaceLabel> {
             overflow: TextOverflow.ellipsis,
           );
         }
+        final resolved = (snap.data ?? '').trim();
+        if (resolved.isNotEmpty) {
+          return Text(
+            resolved,
+            style: widget.textStyle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
+        // Stored coordinates but no registered / resolvable address.
+        if (LocationService.looksLikeCoordinatesString(widget.text)) {
+          return Text(
+            'Location captured · address not available',
+            style: widget.textStyle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
         return Text(
-          snap.data ?? 'Location recorded',
+          widget.text,
           style: widget.textStyle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

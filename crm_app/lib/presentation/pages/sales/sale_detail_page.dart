@@ -191,8 +191,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'lead',
                   primaryColor,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
                 _buildStatusButton(
                   context,
@@ -201,8 +199,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'prospect',
                   primaryColor,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
                 _buildStatusButton(
                   context,
@@ -211,8 +207,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'proposal',
                   primaryColor,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
                 _buildStatusButton(
                   context,
@@ -221,8 +215,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'negotiation',
                   primaryColor,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
                 _buildStatusButton(
                   context,
@@ -231,8 +223,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'closed_won',
                   cs.tertiary,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
                 _buildStatusButton(
                   context,
@@ -241,8 +231,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'closed_lost',
                   cs.error,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
                 _buildStatusButton(
                   context,
@@ -251,8 +239,6 @@ class SaleDetailPage extends ConsumerWidget {
                   'disqualified',
                   cs.outline,
                   textPrimary,
-                  textSecondary,
-                  surfaceColor,
                 ),
               ],
             ),
@@ -567,20 +553,26 @@ class SaleDetailPage extends ConsumerWidget {
     String status,
     Color primaryColor,
     Color textPrimary,
-    Color textSecondary,
-    Color surfaceColor,
   ) {
     final isSelected = sale.status == status;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    Color onBadge(Color bg) {
+      final k = bg.toARGB32();
+      if (k == cs.primary.toARGB32()) return cs.onPrimary;
+      if (k == cs.tertiary.toARGB32()) return cs.onTertiary;
+      if (k == cs.error.toARGB32()) return cs.onError;
+      if (k == cs.outline.toARGB32()) return cs.onSurface;
+      return cs.onPrimary;
+    }
 
     return Container(
       decoration: BoxDecoration(
-        color: isSelected
-            ? primaryColor
-            : (isDarkMode ? surfaceColor : Colors.white),
+        color: isSelected ? primaryColor : cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isSelected ? primaryColor : textSecondary.withOpacity(0.3),
+          color: isSelected
+              ? primaryColor
+              : cs.outlineVariant.withValues(alpha: 0.55),
           width: 1,
         ),
         boxShadow: isSelected
@@ -611,7 +603,7 @@ class SaleDetailPage extends ConsumerWidget {
             child: Text(
               _getStatusDisplayText(status),
               style: TextStyle(
-                color: isSelected ? Colors.white : textPrimary,
+                color: isSelected ? onBadge(primaryColor) : textPrimary,
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
               ),
@@ -728,14 +720,12 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
   }
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
-    final usersState = ref.read(usersProvider);
     final currenciesState = ref.read(currenciesProvider);
     final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
     final locationController = TextEditingController();
@@ -959,14 +949,11 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final companiesState = ref.watch(companiesProvider);
-
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: bgColor,

@@ -216,8 +216,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
             MaterialPageRoute(builder: (context) => const TaskFormPage()),
           );
         },
-        backgroundColor: primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
     );
   }

@@ -343,9 +343,35 @@ class AppTheme {
         thickness: 1,
         space: 1,
       ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: cs.onSurfaceVariant,
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: cs.surfaceContainerHigh,
+        deleteIconColor: cs.onSurfaceVariant,
+        labelStyle: gSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: cs.onSurface,
+        ),
+        secondaryLabelStyle: gSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: cs.onSurfaceVariant,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          side: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.55),
+          ),
+        ),
+      ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: cs.primaryContainer,
-        foregroundColor: cs.onPrimaryContainer,
+        backgroundColor: cs.primary,
+        foregroundColor: cs.onPrimary,
         elevation: 2,
         highlightElevation: 4,
         shape: RoundedRectangleBorder(

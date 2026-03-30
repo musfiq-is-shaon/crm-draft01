@@ -106,8 +106,7 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
             MaterialPageRoute(builder: (context) => const ExpenseFormPage()),
           );
         },
-        backgroundColor: primaryColor,
-        child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -116,7 +115,9 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
+    final primaryColor = cs.primary;
+    final expenseIconTonal = AppThemeColors.tonalForAccent(context, primaryColor);
 
     if (state.isLoading) {
       return const LoadingWidget();
@@ -181,12 +182,12 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
+                          color: expenseIconTonal.background,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           Icons.receipt_long,
-                          color: primaryColor,
+                          color: expenseIconTonal.foreground,
                           size: 24,
                         ),
                       ),

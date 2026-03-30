@@ -294,8 +294,7 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
             MaterialPageRoute(builder: (context) => const SaleFormPage()),
           );
         },
-        backgroundColor: primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -1028,7 +1027,8 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryColor,
-                                foregroundColor: Colors.white,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onPrimary,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),

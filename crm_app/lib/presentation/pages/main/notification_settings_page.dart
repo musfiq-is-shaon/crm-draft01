@@ -216,7 +216,8 @@ class NotificationSettingsPage extends ConsumerWidget {
               label: const Text('Test Notification'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor:
+                    Theme.of(context).colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),

@@ -40,10 +40,10 @@ class LocationService {
     final t = raw.trim();
     if (!looksLikeCoordinatesString(t)) return t;
     final m = _latLngPair.firstMatch(t);
-    if (m == null) return _fallbackPlaceLabel;
+    if (m == null) return '';
     final lat = double.tryParse(m.group(1)!);
     final lng = double.tryParse(m.group(2)!);
-    if (lat == null || lng == null) return _fallbackPlaceLabel;
+    if (lat == null || lng == null) return '';
     try {
       final lang = ui.PlatformDispatcher.instance.locale.languageCode;
       final osm = await NominatimReverseGeocodingService.placeLabelFromCoordinates(
@@ -58,17 +58,15 @@ class LocationService {
         lat,
         lng,
       ).timeout(const Duration(seconds: 12));
-      if (marks.isEmpty) return _fallbackPlaceLabel;
+      if (marks.isEmpty) return '';
       final label = _formatPlacemarkList(marks);
-      return label.isNotEmpty ? label : _fallbackPlaceLabel;
+      return label.isNotEmpty ? label : '';
     } on TimeoutException {
-      return _fallbackPlaceLabel;
+      return '';
     } catch (_) {
-      return _fallbackPlaceLabel;
+      return '';
     }
   }
-
-  static const String _fallbackPlaceLabel = 'Location recorded';
 
   Future<void> init() async {
     await Geolocator.requestPermission();

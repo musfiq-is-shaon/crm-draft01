@@ -749,25 +749,28 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tonal = AppThemeColors.tonalForAccent(context, color);
     return Material(
-      color: color.withOpacity(0.1),
+      color: tonal.background,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
+        splashColor: tonal.foreground.withValues(alpha: 0.12),
+        highlightColor: tonal.foreground.withValues(alpha: 0.06),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color, size: 24),
+              Icon(icon, color: tonal.foreground, size: 24),
               const SizedBox(height: 8),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color,
+                  fontWeight: FontWeight.w600,
+                  color: tonal.foreground,
                 ),
                 textAlign: TextAlign.center,
               ),

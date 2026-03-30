@@ -144,7 +144,9 @@ class RecordTile extends StatelessWidget {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final locIn = record.locationIn?.trim() ?? '';
     final locOut = record.locationOut?.trim() ?? '';
-    final hasLocations = locIn.isNotEmpty || locOut.isNotEmpty;
+    final showLocIn = locIn.isNotEmpty && record.checkInTime != null;
+    final showLocOut = locOut.isNotEmpty && record.checkOutTime != null;
+    final hasLocations = showLocIn || showLocOut;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -200,7 +202,7 @@ class RecordTile extends StatelessWidget {
                   ),
                 if (hasLocations) ...[
                   const SizedBox(height: 12),
-                  if (locIn.isNotEmpty)
+                  if (showLocIn)
                     AttendanceLocationRow(
                       icon: Icons.login_rounded,
                       caption: 'Check-in location',
@@ -208,9 +210,8 @@ class RecordTile extends StatelessWidget {
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
                     ),
-                  if (locIn.isNotEmpty && locOut.isNotEmpty)
-                    const SizedBox(height: 8),
-                  if (locOut.isNotEmpty)
+                  if (showLocIn && showLocOut) const SizedBox(height: 8),
+                  if (showLocOut)
                     AttendanceLocationRow(
                       icon: Icons.logout_rounded,
                       caption: 'Check-out location',

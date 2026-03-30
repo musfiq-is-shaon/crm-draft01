@@ -29,8 +29,10 @@ class KPICard extends StatelessWidget {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final textTertiary = AppThemeColors.textTertiaryColor(context);
+    final cs = Theme.of(context).colorScheme;
     final primaryColor = context.colors.primary;
     final accent = iconColor ?? primaryColor;
+    final tonal = AppThemeColors.tonalForAccent(context, accent);
     final shadows = context.isDark
         ? AppElevation.cardDark(accent)
         : AppElevation.cardLight;
@@ -48,7 +50,7 @@ class KPICard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          splashColor: accent.withOpacity(0.08),
+          splashColor: cs.primary.withValues(alpha: 0.08),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -59,10 +61,10 @@ class KPICard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: accent.withOpacity(0.12),
+                      color: tonal.background,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
-                    child: Icon(icon, color: accent, size: 18),
+                    child: Icon(icon, color: tonal.foreground, size: 18),
                   ),
                   if (onTap != null)
                     Icon(

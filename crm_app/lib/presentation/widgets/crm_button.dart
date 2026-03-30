@@ -54,7 +54,8 @@ class CRMButton extends StatelessWidget {
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             foregroundColor: cs.primary,
-            side: BorderSide(color: cs.primary.withOpacity(0.4)),
+            backgroundColor: cs.surfaceContainerHighest,
+            side: BorderSide(color: cs.outline),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: radius),
           ),

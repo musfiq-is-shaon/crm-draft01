@@ -12,4 +12,10 @@ extension AppThemeContext on BuildContext {
 
   /// Soft surface for cards on pitch-black scaffold.
   Color get surfaceElevated => colors.surfaceContainerHighest;
+
+  /// Tonal surfaces for accent-colored UI (icons, chips).
+  Color get primaryTonal => colors.primaryContainer;
+  Color get onPrimaryTonal => colors.onPrimaryContainer;
+  Color get secondaryTonal => colors.secondaryContainer;
+  Color get onSecondaryTonal => colors.onSecondaryContainer;
 }

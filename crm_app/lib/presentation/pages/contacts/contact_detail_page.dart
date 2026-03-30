@@ -317,8 +317,13 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final enabled = onTap != null;
+    final bg = enabled ? primaryColor : cs.surfaceContainerHighest;
+    final fg =
+        enabled ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.45);
     return Material(
-      color: onTap != null ? primaryColor : Colors.grey,
+      color: bg,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -328,12 +333,12 @@ class _ActionButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white, size: 20),
+              Icon(icon, color: fg, size: 20),
               const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: fg,
                   fontWeight: FontWeight.w600,
                 ),
               ),
