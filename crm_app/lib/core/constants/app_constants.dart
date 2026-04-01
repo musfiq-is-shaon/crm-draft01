@@ -1,6 +1,9 @@
 class AppConstants {
   AppConstants._();
 
+  /// Bangladesh Taka (BDT) symbol for amounts shown in the UI.
+  static const String currencySymbol = '৳';
+
   // API Base URL - Update this to your production URL
   static const String baseUrl = 'https://be-crm-production-a948.up.railway.app';
 

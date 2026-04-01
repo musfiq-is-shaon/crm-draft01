@@ -2,6 +2,7 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/company_provider.dart';
@@ -94,19 +95,28 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
   }
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
+    final usersState = ref.read(usersProvider);
     final currenciesState = ref.read(currenciesProvider);
     final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final countryController = TextEditingController();
 
-    // Set current user as default KAM
     String? selectedKamUserId = authState.user?.id;
+    if (selectedKamUserId != null &&
+        !usersState.users.any((u) => u.id == selectedKamUserId)) {
+      selectedKamUserId =
+          usersState.users.isNotEmpty ? usersState.users.first.id : null;
+    }
+    if (selectedKamUserId == null && usersState.users.isNotEmpty) {
+      selectedKamUserId = usersState.users.first.id;
+    }
 
     // Set default currency if available
     String? selectedCurrencyId;
@@ -118,16 +128,17 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
           title: Text(
             'Create Company',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: textPrimary,
             ),
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
                 TextField(
                   controller: nameController,
                   style: TextStyle(color: textPrimary),
@@ -145,6 +156,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                 const SizedBox(height: 16),
                 // Currency Dropdown
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: selectedCurrencyId,
                   decoration: InputDecoration(
                     labelText: 'Currency *',
@@ -199,9 +211,37 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  key: ValueKey(selectedKamUserId ?? 'kam'),
+                  initialValue: selectedKamUserId,
+                  decoration: InputDecoration(
+                    labelText: 'KAM (Key Account Manager) *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: usersState.users
+                      .map(
+                        (user) => DropdownMenuItem(
+                          value: user.id,
+                          child: Text(user.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: usersState.users.isEmpty
+                      ? null
+                      : (value) {
+                          setDialogState(() => selectedKamUserId = value);
+                        },
+                ),
               ],
             ),
-          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -210,7 +250,9 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
             TextButton(
               onPressed: () async {
                 if (nameController.text.isNotEmpty &&
-                    selectedCurrencyId != null) {
+                    selectedCurrencyId != null &&
+                    selectedKamUserId != null &&
+                    selectedKamUserId!.isNotEmpty) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -221,8 +263,9 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                         country: countryController.text.isNotEmpty
                             ? countryController.text
                             : null,
-                        kamUserId: selectedKamUserId ?? '',
+                        kamUserId: selectedKamUserId!,
                         currencyId: selectedCurrencyId!,
+                        createdByUserId: authState.user?.id,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;
@@ -486,7 +529,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                   labelStyle: TextStyle(color: textSecondary),
                   hintText: 'Enter amount',
                   hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
-                  prefixText: '\$ ',
+                  prefixText: '${AppConstants.currencySymbol} ',
                   prefixStyle: TextStyle(color: textPrimary),
                 ),
                 validator: (value) {
@@ -600,7 +643,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                     labelStyle: TextStyle(color: textSecondary),
                     hintText: 'Enter return amount',
                     hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
-                    prefixText: '\$ ',
+                    prefixText: '${AppConstants.currencySymbol} ',
                     prefixStyle: TextStyle(color: textPrimary),
                   ),
                 ),

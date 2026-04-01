@@ -2,6 +2,7 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/sale_model.dart';
 import '../../providers/sale_provider.dart';
@@ -173,7 +174,8 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
                   ),
                   _buildInfoRow(
                     'Expected Revenue',
-                    '\$${sale.expectedRevenue?.toStringAsFixed(2) ?? '0'}',
+                    '${AppConstants.currencySymbol}'
+                    '${sale.expectedRevenue?.toStringAsFixed(2) ?? '0'}',
                     textPrimary,
                     textSecondary,
                   ),
@@ -652,9 +654,9 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
 
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: surfaceColor,
         title: Text('Delete Deal', style: TextStyle(color: textPrimary)),
         content: Text(
@@ -663,17 +665,29 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancel', style: TextStyle(color: textSecondary)),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(salesProvider.notifier).deleteSale(sale.id);
-              // Invalidate the sales provider to refresh the list
-              ref.invalidate(salesProvider);
-              if (context.mounted) {
-                Navigator.pop(context);
+              Navigator.pop(dialogContext);
+              try {
+                await ref.read(salesProvider.notifier).deleteSale(sale.id);
+                ref.invalidate(saleDetailProvider(sale.id));
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Could not delete deal: ${e.toString().replaceFirst('Exception: ', '')}',
+                      ),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -746,19 +760,28 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
   }
 
   Future<void> _showCreateCompanyDialog(BuildContext context) async {
+    final usersState = ref.read(usersProvider);
     final currenciesState = ref.read(currenciesProvider);
     final authState = ref.read(authProvider);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final surfaceColor = AppThemeColors.surfaceColor(context);
 
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final countryController = TextEditingController();
 
-    // Set current user as default KAM
     String? selectedKamUserId = authState.user?.id;
+    if (selectedKamUserId != null &&
+        !usersState.users.any((u) => u.id == selectedKamUserId)) {
+      selectedKamUserId =
+          usersState.users.isNotEmpty ? usersState.users.first.id : null;
+    }
+    if (selectedKamUserId == null && usersState.users.isNotEmpty) {
+      selectedKamUserId = usersState.users.first.id;
+    }
 
     // Set default currency if available
     String? selectedCurrencyId;
@@ -770,11 +793,12 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
           title: Text('Create Company', style: TextStyle(color: textPrimary)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
                 TextField(
                   controller: nameController,
                   style: TextStyle(color: textPrimary),
@@ -846,9 +870,37 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  key: ValueKey(selectedKamUserId ?? 'kam'),
+                  initialValue: selectedKamUserId,
+                  decoration: InputDecoration(
+                    labelText: 'KAM (Key Account Manager) *',
+                    labelStyle: TextStyle(color: textSecondary),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: usersState.users
+                      .map(
+                        (user) => DropdownMenuItem(
+                          value: user.id,
+                          child: Text(user.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: usersState.users.isEmpty
+                      ? null
+                      : (value) {
+                          setDialogState(() => selectedKamUserId = value);
+                        },
+                ),
               ],
             ),
-          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -857,7 +909,9 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
             TextButton(
               onPressed: () async {
                 if (nameController.text.isNotEmpty &&
-                    selectedCurrencyId != null) {
+                    selectedCurrencyId != null &&
+                    selectedKamUserId != null &&
+                    selectedKamUserId!.isNotEmpty) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -868,8 +922,9 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                         country: countryController.text.isNotEmpty
                             ? countryController.text
                             : null,
-                        kamUserId: selectedKamUserId ?? '',
+                        kamUserId: selectedKamUserId!,
                         currencyId: selectedCurrencyId!,
+                        createdByUserId: authState.user?.id,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;
@@ -1129,7 +1184,7 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                   decoration: InputDecoration(
                     hintText: 'Enter expected revenue',
                     hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
-                    prefixText: '\$ ',
+                    prefixText: '${AppConstants.currencySymbol} ',
                     prefixStyle: TextStyle(color: textPrimary),
                     filled: true,
                     fillColor: surfaceColor,

@@ -104,16 +104,20 @@ class CompanyRepository {
     String? country,
     required String kamUserId,
     required String currencyId,
+    String? createdByUserId,
   }) async {
+    final data = <String, dynamic>{
+      'name': name,
+      'kamUserId': kamUserId,
+      'currencyId': currencyId,
+      'location': location,
+      'country': country,
+      if (createdByUserId != null && createdByUserId.isNotEmpty)
+        'createdByUserId': createdByUserId,
+    };
     final response = await _apiClient.post(
       AppConstants.companies,
-      data: {
-        'name': name,
-        'kamUserId': kamUserId,
-        'currencyId': currencyId,
-        'location': location,
-        'country': country,
-      },
+      data: data,
     );
     return Company.fromJson(response.data);
   }

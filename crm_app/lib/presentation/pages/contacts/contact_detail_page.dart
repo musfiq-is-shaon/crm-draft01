@@ -410,8 +410,15 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
     final locationController = TextEditingController();
     final countryController = TextEditingController();
 
-    // Set current user as default KAM
     String? selectedKamUserId = authState.user?.id;
+    if (selectedKamUserId != null &&
+        !usersState.users.any((u) => u.id == selectedKamUserId)) {
+      selectedKamUserId =
+          usersState.users.isNotEmpty ? usersState.users.first.id : null;
+    }
+    if (selectedKamUserId == null && usersState.users.isNotEmpty) {
+      selectedKamUserId = usersState.users.first.id;
+    }
 
     // Set default currency if available
     String? selectedCurrencyId;
@@ -423,11 +430,12 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
           title: Text('Create Company', style: TextStyle(color: textPrimary)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
                 TextField(
                   controller: nameController,
                   style: TextStyle(color: textPrimary),
@@ -445,6 +453,7 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                 const SizedBox(height: 16),
                 // Currency Dropdown
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: selectedCurrencyId,
                   decoration: InputDecoration(
                     labelText: 'Currency *',
@@ -500,9 +509,11 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  key: ValueKey(selectedKamUserId ?? 'kam'),
                   initialValue: selectedKamUserId,
                   decoration: InputDecoration(
-                    labelText: 'KAM (Key Account Manager)',
+                    labelText: 'KAM (Key Account Manager) *',
                     labelStyle: TextStyle(color: textSecondary),
                     border: OutlineInputBorder(
                       borderSide: BorderSide(color: borderColor),
@@ -512,28 +523,25 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                     ),
                   ),
                   dropdownColor: surfaceColor,
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Select KAM'),
-                    ),
-                    ...usersState.users.map(
-                      (user) => DropdownMenuItem(
-                        value: user.id,
-                        child: Text(
-                          user.name,
-                          style: TextStyle(color: textPrimary),
+                  items: usersState.users
+                      .map(
+                        (user) => DropdownMenuItem(
+                          value: user.id,
+                          child: Text(
+                            user.name,
+                            style: TextStyle(color: textPrimary),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() => selectedKamUserId = value);
-                  },
+                      )
+                      .toList(),
+                  onChanged: usersState.users.isEmpty
+                      ? null
+                      : (value) {
+                          setDialogState(() => selectedKamUserId = value);
+                        },
                 ),
               ],
             ),
-          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -542,7 +550,9 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
             TextButton(
               onPressed: () async {
                 if (nameController.text.isNotEmpty &&
-                    selectedCurrencyId != null) {
+                    selectedCurrencyId != null &&
+                    selectedKamUserId != null &&
+                    selectedKamUserId!.isNotEmpty) {
                   await ref
                       .read(companiesProvider.notifier)
                       .createCompany(
@@ -553,8 +563,9 @@ class _ContactFormPageState extends ConsumerState<ContactFormPage> {
                         country: countryController.text.isNotEmpty
                             ? countryController.text
                             : null,
-                        kamUserId: selectedKamUserId ?? '',
+                        kamUserId: selectedKamUserId!,
                         currencyId: selectedCurrencyId!,
+                        createdByUserId: authState.user?.id,
                       );
                   // Get the newly created company (first in the list)
                   final companies = ref.read(companiesProvider).companies;

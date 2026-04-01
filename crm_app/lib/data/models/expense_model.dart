@@ -1,3 +1,4 @@
+import '../../core/constants/app_constants.dart';
 import 'company_model.dart';
 import 'user_model.dart';
 
@@ -99,8 +100,10 @@ class Expense {
 
   double get totalAmount => amount + (amountReturn ?? 0);
 
-  String get formattedAmount => '\$${amount.toStringAsFixed(2)}';
-  String get formattedTotalAmount => '\$${totalAmount.toStringAsFixed(2)}';
+  String get formattedAmount =>
+      '${AppConstants.currencySymbol}${amount.toStringAsFixed(2)}';
+  String get formattedTotalAmount =>
+      '${AppConstants.currencySymbol}${totalAmount.toStringAsFixed(2)}';
 }
 
 class ExpensePurpose {

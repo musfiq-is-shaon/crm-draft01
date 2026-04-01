@@ -402,6 +402,7 @@ class SalesNotifier extends StateNotifier<SalesState> {
       await loadSales();
     } catch (e) {
       state = state.copyWith(error: e.toString());
+      rethrow;
     }
   }
 }

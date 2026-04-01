@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../data/models/company_model.dart';
@@ -693,23 +694,32 @@ class _SalesListPageState extends ConsumerState<SalesListPage>
                           ),
                         ),
                         dropdownColor: surfaceColor,
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('All')),
+                        items: [
+                          const DropdownMenuItem(value: null, child: Text('All')),
                           DropdownMenuItem(
                             value: '0-1000',
-                            child: Text('\$0 - \$1K'),
+                            child: Text(
+                              '${AppConstants.currencySymbol}0 - '
+                              '${AppConstants.currencySymbol}1K',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: '1000-5000',
-                            child: Text('\$1K - \$5K'),
+                            child: Text(
+                              '${AppConstants.currencySymbol}1K - '
+                              '${AppConstants.currencySymbol}5K',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: '5000-10000',
-                            child: Text('\$5K - \$10K'),
+                            child: Text(
+                              '${AppConstants.currencySymbol}5K - '
+                              '${AppConstants.currencySymbol}10K',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: '10000+',
-                            child: Text('\$10K+'),
+                            child: Text('${AppConstants.currencySymbol}10K+'),
                           ),
                         ],
                         onChanged: (value) {

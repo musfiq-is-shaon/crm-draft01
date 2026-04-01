@@ -1,3 +1,4 @@
+import '../../core/constants/app_constants.dart';
 import 'company_model.dart';
 import 'user_model.dart';
 
@@ -89,8 +90,11 @@ class Sale {
   bool get isDisqualified => status == 'disqualified';
 
   String get formattedRevenue {
-    if (expectedRevenue == null) return '\$0';
-    return '\$${expectedRevenue!.toStringAsFixed(0)}';
+    if (expectedRevenue == null) {
+      return '${AppConstants.currencySymbol}0';
+    }
+    return '${AppConstants.currencySymbol}'
+        '${expectedRevenue!.toStringAsFixed(0)}';
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -174,7 +175,9 @@ class ExpenseDetailPage extends ConsumerWidget {
                       _buildDetailRow(
                         icon: Icons.money_outlined,
                         label: 'Return Amount',
-                        value: '\$${expense.amountReturn!.toStringAsFixed(2)}',
+                        value:
+                            '${AppConstants.currencySymbol}'
+                            '${expense.amountReturn!.toStringAsFixed(2)}',
                         textPrimary: textPrimary,
                         textSecondary: textSecondary,
                         textTertiary: textTertiary,
