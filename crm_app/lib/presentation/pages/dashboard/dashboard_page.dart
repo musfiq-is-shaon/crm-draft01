@@ -90,33 +90,39 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Welcome back!',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: textSecondary,
-                                ),
-                              ),
-                              if (authState.user?.name.isNotEmpty ?? false)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    authState.user!.name,
-                                    style: TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                    ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Welcome back!',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: textSecondary,
                                   ),
                                 ),
-                              const SizedBox(height: 12),
-                            ],
+                                if (authState.user?.name.isNotEmpty ?? false)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      authState.user!.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
+                                        height: 1.15,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 12),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 12),
                           Row(
                             children: [
                               Container(
