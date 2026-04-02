@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/company_provider.dart';
+import '../../providers/rbac_provider.dart'
+    show rbacAccessDigestProvider, rbacModuleAdminProvider;
 import '../../widgets/crm_card.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
@@ -39,6 +42,8 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(rbacAccessDigestProvider);
+    ref.watch(rbacModuleAdminProvider(RbacPageKey.expenses));
     final expensesState = ref.watch(expensesProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);

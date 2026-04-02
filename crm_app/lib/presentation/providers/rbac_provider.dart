@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/constants/rbac_page_keys.dart';
 import '../../data/models/rbac_model.dart';
 import '../../data/repositories/rbac_repository.dart';
+import 'auth_provider.dart';
 
 enum RbacLoadStatus { idle, loading, loaded, error }
 
@@ -38,25 +40,26 @@ class RbacNotifier extends StateNotifier<RbacState> {
   RbacNotifier(this._repository) : super(const RbacState());
 
   final RbacRepository _repository;
-  bool _loadInFlight = false;
+  bool _loadBusy = false;
 
+  /// Single in-flight request — avoids discarding a successful response when a newer
+  /// call fails first (sequence-based loads left [me] null and hid all modules).
   Future<void> load() async {
-    if (_loadInFlight) return;
-    _loadInFlight = true;
+    if (_loadBusy) return;
+    _loadBusy = true;
+    final previousMe = state.me;
+    state = state.copyWith(status: RbacLoadStatus.loading, errorMessage: null);
     try {
-      state = state.copyWith(status: RbacLoadStatus.loading, errorMessage: null);
-      try {
-        final me = await _repository.fetchMe();
-        state = RbacState(status: RbacLoadStatus.loaded, me: me);
-      } catch (e) {
-        state = RbacState(
-          status: RbacLoadStatus.error,
-          me: state.me,
-          errorMessage: e.toString(),
-        );
-      }
+      final me = await _repository.fetchMe();
+      state = RbacState(status: RbacLoadStatus.loaded, me: me);
+    } catch (e) {
+      state = RbacState(
+        status: RbacLoadStatus.error,
+        me: previousMe,
+        errorMessage: e.toString(),
+      );
     } finally {
-      _loadInFlight = false;
+      _loadBusy = false;
     }
   }
 
@@ -72,4 +75,50 @@ final rbacProvider = StateNotifierProvider<RbacNotifier, RbacState>((ref) {
 /// Convenience: current RBAC payload when loaded.
 final rbacMeProvider = Provider<RbacMe?>((ref) {
   return ref.watch(rbacProvider).me;
+});
+
+/// Hash of nav + effective access levels — changes when a module goes `user` → `admin`
+/// (nav keys may stay the same). Watch this in tab screens so IndexedStack children rebuild
+/// and refetch paths run after [loadedTabsProvider] is cleared in the shell.
+final rbacAccessDigestProvider = Provider<int>((ref) {
+  final me = ref.watch(rbacMeProvider);
+  if (me == null) return 0;
+  var h = me.navPageKeys.length;
+  for (final k in me.navPageKeys) {
+    h = Object.hash(h, k);
+  }
+  final keys = me.effective.keys.toList()..sort();
+  for (final k in keys) {
+    h = Object.hash(h, k, me.effective[k]);
+  }
+  return h;
+});
+
+/// Global JWT `admin` **or** RBAC `admin` for [pageKey] (full module scope per API).
+final rbacModuleAdminProvider = Provider.family<bool, String>((ref, pageKey) {
+  if (ref.watch(isAdminProvider)) return true;
+  return ref.watch(rbacMeProvider)?.isModuleAdmin(pageKey) ?? false;
+});
+
+/// Leave calendar / all / team admin paths: JWT admin, Leaves RBAC admin, or HR nav.
+final leaveManagementElevatedProvider = Provider<bool>((ref) {
+  if (ref.watch(isAdminProvider)) return true;
+  final me = ref.watch(rbacMeProvider);
+  if (me == null) return false;
+  if (me.isModuleAdmin(RbacPageKey.leaves)) return true;
+  if (me.hasNav(RbacPageKey.hr)) return true;
+  return false;
+});
+
+/// Edit org company profile on Profile screen.
+final companyProfileEditAllowedProvider = Provider<bool>((ref) {
+  if (ref.watch(isAdminProvider)) return true;
+  return ref.watch(rbacMeProvider)?.isModuleAdmin(RbacPageKey.companies) ??
+      false;
+});
+
+/// Dashboard uses the “admin” quick-action layout if JWT admin or any RBAC module admin.
+final dashboardQuickActionsAdminLayoutProvider = Provider<bool>((ref) {
+  if (ref.watch(isAdminProvider)) return true;
+  return ref.watch(rbacMeProvider)?.hasAnyRbacModuleAdmin ?? false;
 });

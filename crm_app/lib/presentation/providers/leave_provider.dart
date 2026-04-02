@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/leave_model.dart';
 import '../../data/repositories/leave_repository.dart';
 import 'auth_provider.dart';
+import 'rbac_provider.dart';
 
 enum LeaveListScope { mine, team, all }
 
@@ -143,16 +144,16 @@ class LeaveNotifier extends StateNotifier<LeaveState> {
     }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final isAdmin = ref.read(isAdminProvider);
+      final leaveElevated = ref.read(leaveManagementElevatedProvider);
       var scope = state.scope;
-      if (scope == LeaveListScope.all && !isAdmin) {
+      if (scope == LeaveListScope.all && !leaveElevated) {
         // Account/scope may be stale after switching users; fall back quietly.
         scope = LeaveListScope.mine;
         state = state.copyWith(scope: scope, error: null);
       }
       if (scope == LeaveListScope.team) {
         final isMgr = state.reportingInfo?.isReportingManager ?? false;
-        if (!isMgr && !isAdmin) {
+        if (!isMgr && !leaveElevated) {
           // Avoid noisy popup on account switch; show own leaves instead.
           scope = LeaveListScope.mine;
           state = state.copyWith(scope: scope, error: null);

@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/leave_model.dart';
 import '../../../data/repositories/leave_repository.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/rbac_provider.dart' show leaveManagementElevatedProvider;
 import '../../providers/leave_provider.dart';
 import 'leave_edit_page.dart';
 
@@ -231,7 +232,7 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
     final borderColor = AppThemeColors.borderColor(context);
     final scope = ref.watch(leaveProvider.select((s) => s.scope));
     final currentUserId = ref.watch(currentUserIdProvider);
-    final isAdmin = ref.watch(isAdminProvider);
+    final leaveElevated = ref.watch(leaveManagementElevatedProvider);
     final isReporting =
         ref.watch(leaveProvider.select((s) => s.reportingInfo?.isReportingManager ?? false));
 
@@ -276,7 +277,7 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
                   borderColor,
                   scope,
                   currentUserId,
-                  isAdmin,
+                  leaveElevated,
                   isReporting,
                 ),
     );
@@ -291,7 +292,7 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
     Color borderColor,
     LeaveListScope scope,
     String? currentUserId,
-    bool isAdmin,
+    bool leaveElevated,
     bool isReporting,
   ) {
     final isOwnLeave = currentUserId != null &&
@@ -299,8 +300,8 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
     final canEdit = entry.isPending && isOwnLeave;
     final showApproveReject = entry.isPending &&
         !isOwnLeave &&
-        ((scope == LeaveListScope.team && (isReporting || isAdmin)) ||
-            (scope == LeaveListScope.all && isAdmin));
+        ((scope == LeaveListScope.team && (isReporting || leaveElevated)) ||
+            (scope == LeaveListScope.all && leaveElevated));
 
     final typeLabel =
         (entry.leaveTypeName ?? entry.leaveTypeId)?.trim().isNotEmpty == true

@@ -10,7 +10,10 @@ import '../../providers/contact_provider.dart';
 import '../../providers/notifications_provider.dart';
 import '../../providers/rbac_prefetch.dart';
 import '../../providers/rbac_provider.dart' show rbacProvider, RbacState, RbacLoadStatus;
+import '../../providers/auth_provider.dart';
 import '../../providers/sale_provider.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/renewal_provider.dart';
 import '../../providers/task_provider.dart';
 import '../contacts/contacts_list_page.dart';
 import '../dashboard/dashboard_page.dart';
@@ -42,6 +45,11 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
   void _startRbacForegroundPolling() {
     _rbacForegroundPollTimer?.cancel();
+    // Immediate tick so we are not idle until the first [periodic] fire.
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      ref.read(rbacProvider.notifier).load();
+    });
     _rbacForegroundPollTimer = Timer.periodic(
       AppConstants.rbacForegroundPollInterval,
       (_) {
@@ -103,29 +111,39 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
   List<String> _tabIds(RbacState rbac) {
     final me = rbac.me;
+    final jwtGlobalAdmin = ref.read(authProvider).user?.isAdmin ?? false;
     final ids = <String>[_kDashboard];
-    if (me != null) {
+
+    // Global JWT admin: full bottom nav (API may still send explicit RBAC only).
+    if (jwtGlobalAdmin) {
+      ids
+        ..add(_kSales)
+        ..add(_kExpenses)
+        ..add(_kContacts);
+    } else if (me != null) {
       if (me.hasNav(RbacPageKey.sales)) ids.add(_kSales);
       if (me.hasNav(RbacPageKey.expenses)) ids.add(_kExpenses);
       if (me.canNavContacts) ids.add(_kContacts);
     }
+
     ids.add(_kMore);
     return ids;
   }
 
   List<Widget> _tabPages(List<String> ids) {
+    // Not `const` — `const` tab widgets can prevent subtree rebuilds when only RBAC changes.
     return ids.map((id) {
       switch (id) {
         case _kDashboard:
-          return const DashboardPage();
+          return DashboardPage();
         case _kSales:
-          return const SalesListPage();
+          return SalesListPage();
         case _kExpenses:
-          return const ExpensesListPage();
+          return ExpensesListPage();
         case _kContacts:
-          return const ContactsListPage();
+          return ContactsListPage();
         case _kMore:
-          return const MorePage();
+          return MorePage();
         default:
           return const SizedBox.shrink();
       }
@@ -212,6 +230,8 @@ class _ShellPageState extends ConsumerState<ShellPage>
     switch (id) {
       case _kSales:
         ref.read(salesProvider.notifier).loadSales();
+        ref.read(ordersProvider.notifier).loadOrders();
+        ref.read(renewalsProvider.notifier).loadRenewals();
         break;
       case _kContacts:
         ref.read(contactsProvider.notifier).loadContacts();
@@ -243,6 +263,17 @@ class _ShellPageState extends ConsumerState<ShellPage>
       }
       if (next.status == RbacLoadStatus.loaded && next.me != null) {
         prefetchCrmLookupData(ref, next.me);
+        final prevMe = previous?.me;
+        if (prevMe == null || !next.me!.sameUiAccessAs(prevMe)) {
+          // Allow module data refetch when only `effective` changes (e.g. contacts user→admin).
+          ref.read(loadedTabsProvider.notifier).state = {};
+          final idx =
+              ref.read(selectedTabProvider).clamp(0, nextIds.length - 1);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _loadTabData(nextIds, idx);
+          });
+        }
       }
     });
 

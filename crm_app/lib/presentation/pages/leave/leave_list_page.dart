@@ -4,7 +4,8 @@ import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/rbac_provider.dart';
+import '../../providers/rbac_provider.dart'
+    show rbacMeProvider, leaveManagementElevatedProvider;
 import '../../providers/leave_provider.dart';
 import '../../../data/models/leave_model.dart';
 import '../../widgets/crm_card.dart';
@@ -63,10 +64,11 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
     }
 
     final state = ref.watch(leaveProvider);
-    final isAdmin = ref.watch(isAdminProvider);
+    final leaveElevated = ref.watch(leaveManagementElevatedProvider);
+    final jwtAdmin = ref.watch(isAdminProvider);
     final me = ref.watch(rbacMeProvider);
     final hasHrModule = me?.hasNav(RbacPageKey.hr) ?? false;
-    final showHrAdminEntry = isAdmin || hasHrModule;
+    final showHrAdminEntry = jwtAdmin || hasHrModule;
     final bg = AppThemeColors.backgroundColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
@@ -75,13 +77,13 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
     final primary = Theme.of(context).colorScheme.primary;
 
     final showTeamChip =
-        isAdmin || (state.reportingInfo?.isReportingManager ?? false);
-    final showAllChip = isAdmin;
+        leaveElevated || (state.reportingInfo?.isReportingManager ?? false);
+    final showAllChip = leaveElevated;
 
     final canOpenLeaveDetail =
         state.scope == LeaveListScope.mine ||
-        (state.scope == LeaveListScope.all && isAdmin) ||
-        (state.scope == LeaveListScope.team && isAdmin);
+        (state.scope == LeaveListScope.all && leaveElevated) ||
+        (state.scope == LeaveListScope.team && leaveElevated);
 
     ref.listen(leaveProvider, (prev, next) {
       if (next.error != null && prev?.error != next.error && context.mounted) {
@@ -153,248 +155,249 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
               borderRadius: AppRadius.lg,
               padding: const EdgeInsets.fromLTRB(12, 10, 8, 12),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.pie_chart_outline, size: 20, color: primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Your remaining leave',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: textPrimary,
-                              fontSize: 15,
-                            ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.pie_chart_outline, size: 20, color: primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Your remaining leave',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: textPrimary,
+                            fontSize: 15,
                           ),
-                        ),
-                        if (state.balancesLoading)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: primary,
-                              ),
-                            ),
-                          )
-                        else
-                          IconButton(
-                            icon: const Icon(Icons.refresh, size: 22),
-                            tooltip: 'Refresh balances',
-                            color: textSecondary,
-                            onPressed: () => ref
-                                .read(leaveProvider.notifier)
-                                .loadMyBalances(),
-                          ),
-                      ],
-                    ),
-                    if (state.balancesError != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        state.balancesError!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppThemeColors.errorForeground(context),
-                          height: 1.3,
                         ),
                       ),
-                    ],
-                    if (!state.balancesLoading &&
-                        state.balancesError == null &&
-                        state.myBalances.isEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'No balances on file yet. HR can allocate days (menu → Leave balances).',
-                        style: TextStyle(
-                          fontSize: 13,
+                      if (state.balancesLoading)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: primary,
+                            ),
+                          ),
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 22),
+                          tooltip: 'Refresh balances',
                           color: textSecondary,
-                          height: 1.35,
+                          onPressed: () =>
+                              ref.read(leaveProvider.notifier).loadMyBalances(),
                         ),
-                      ),
                     ],
-                    if (state.myBalances.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Column(
-                          children: [
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'All values are in days',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                  ),
+                  if (state.balancesError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      state.balancesError!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppThemeColors.errorForeground(context),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                  if (!state.balancesLoading &&
+                      state.balancesError == null &&
+                      state.myBalances.isEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'No balances on file yet. HR can allocate days (menu → Leave balances).',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                  if (state.myBalances.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'All values are in days',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 4,
-                                  child: Text(
-                                    'Leave type',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: Text(
+                                  'Leave type',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textSecondary,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                Expanded(
-                                  child: Text(
-                                    'Cred',
-                                    textAlign: TextAlign.end,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'Cred',
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textSecondary,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                Expanded(
-                                  child: Text(
-                                    'Rem',
-                                    textAlign: TextAlign.end,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'Rem',
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textSecondary,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                Expanded(
-                                  child: Text(
-                                    'Add',
-                                    textAlign: TextAlign.end,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context).colorScheme.error,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'Add',
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context).colorScheme.error,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            for (final entry in state.myBalances.asMap().entries) ...[
-                              if (entry.key > 0) const Divider(height: 10),
-                              Builder(
-                                builder: (context) {
-                                  final cs = Theme.of(context).colorScheme;
-                                  final row = entry.value;
-                                  final label = row.leaveTypeName ?? row.leaveTypeId;
-                                  final credited = row.creditedDays;
-                                  final remaining = row.remainingDays ?? 0;
-                                  final additional =
-                                      row.additionalOutstandingDays ?? 0;
-                                  final muted = row.isActive == false;
-                                  final rowColor = muted
-                                      ? cs.onSurfaceVariant
-                                      : textPrimary;
-                                  return Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 4,
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                label,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: rowColor,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            if (muted) ...[
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                Icons.block,
-                                                size: 12,
-                                                color: cs.onSurfaceVariant,
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          credited == null
-                                              ? '-'
-                                              : _formatLeaveBalance(credited),
-                                          textAlign: TextAlign.end,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: rowColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          _formatLeaveBalance(remaining),
-                                          textAlign: TextAlign.end,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: rowColor,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          _formatLeaveBalance(additional),
-                                          textAlign: TextAlign.end,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: additional > 0
-                                                ? cs.error
-                                                : rowColor,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
                               ),
                             ],
-                            const SizedBox(height: 4),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                'Cred: Credited  Rem: Remaining  Add: Additional used',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: textSecondary,
-                                ),
-                              ),
+                          ),
+                          const SizedBox(height: 6),
+                          for (final entry
+                              in state.myBalances.asMap().entries) ...[
+                            if (entry.key > 0) const Divider(height: 10),
+                            Builder(
+                              builder: (context) {
+                                final cs = Theme.of(context).colorScheme;
+                                final row = entry.value;
+                                final label =
+                                    row.leaveTypeName ?? row.leaveTypeId;
+                                final credited = row.creditedDays;
+                                final remaining = row.remainingDays ?? 0;
+                                final additional =
+                                    row.additionalOutstandingDays ?? 0;
+                                final muted = row.isActive == false;
+                                final rowColor = muted
+                                    ? cs.onSurfaceVariant
+                                    : textPrimary;
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 4,
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              label,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: rowColor,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          if (muted) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              Icons.block,
+                                              size: 12,
+                                              color: cs.onSurfaceVariant,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        credited == null
+                                            ? '-'
+                                            : _formatLeaveBalance(credited),
+                                        textAlign: TextAlign.end,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: rowColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        _formatLeaveBalance(remaining),
+                                        textAlign: TextAlign.end,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: rowColor,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        _formatLeaveBalance(additional),
+                                        textAlign: TextAlign.end,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: additional > 0
+                                              ? cs.error
+                                              : rowColor,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ],
-                        ),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              'Cred: Credited  Rem: Remaining  Add: Additional used',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
+          ),
           if (showTeamChip || showAllChip)
             Padding(
               padding: AppThemeColors.listPagePaddingTightTop,
@@ -465,7 +468,7 @@ class _LeaveListPageState extends ConsumerState<LeaveListPage> {
                 ),
               ),
             ),
-          if (state.scope == LeaveListScope.all && isAdmin)
+          if (state.scope == LeaveListScope.all && leaveElevated)
             Padding(
               padding: AppThemeColors.listPagePaddingTightTop,
               child: Container(

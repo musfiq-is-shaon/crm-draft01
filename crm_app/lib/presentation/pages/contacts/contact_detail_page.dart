@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/contact_model.dart';
 import '../../providers/contact_provider.dart';
+import '../../providers/rbac_provider.dart'
+    show rbacAccessDigestProvider, rbacModuleAdminProvider;
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -19,6 +22,8 @@ class ContactDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(rbacAccessDigestProvider);
+    ref.watch(rbacModuleAdminProvider(RbacPageKey.contacts));
     final contactsState = ref.watch(contactsProvider);
     final contact = contactsState.contacts
         .where((c) => c.id == contactId)

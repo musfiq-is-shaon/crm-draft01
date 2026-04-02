@@ -4,8 +4,10 @@ import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/task_model.dart';
+import '../../../core/constants/rbac_page_keys.dart';
 import '../../providers/rbac_prefetch.dart';
-import '../../providers/rbac_provider.dart';
+import '../../providers/rbac_provider.dart'
+    show rbacModuleAdminProvider, rbacMeProvider;
 import '../../providers/task_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -49,7 +51,7 @@ class _TasksListPageState extends ConsumerState<TasksListPage>
   @override
   Widget build(BuildContext context) {
     final tasksState = ref.watch(tasksProvider);
-    final isAdmin = ref.watch(isAdminProvider);
+    final isAdmin = ref.watch(rbacModuleAdminProvider(RbacPageKey.tasks));
     final currentUserId = ref.watch(currentUserIdProvider);
     final userFilteredTasks = ref.watch(userFilteredTasksProvider);
 

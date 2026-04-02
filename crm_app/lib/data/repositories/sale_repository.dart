@@ -8,6 +8,25 @@ class SaleRepository {
 
   SaleRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
+  static dynamic _unwrap(dynamic raw) {
+    if (raw is Map && raw['data'] != null) return raw['data'];
+    return raw;
+  }
+
+  static Map<String, dynamic> _asSaleMap(dynamic raw) {
+    final u = _unwrap(raw);
+    if (u is! Map) {
+      throw FormatException('Expected sale object, got $u');
+    }
+    return Map<String, dynamic>.from(u);
+  }
+
+  static List<dynamic> _asList(dynamic raw) {
+    final u = _unwrap(raw);
+    if (u is List) return u;
+    return [];
+  }
+
   Future<List<Sale>> getSales({
     String? status,
     String? companyId,
@@ -32,13 +51,15 @@ class SaleRepository {
       AppConstants.sales,
       queryParameters: queryParams,
     );
-    final List<dynamic> data = response.data;
-    return data.map((json) => Sale.fromJson(json)).toList();
+    final data = _asList(response.data);
+    return data
+        .map((json) => Sale.fromJson(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<Sale> getSaleById(String id) async {
     final response = await _apiClient.get('${AppConstants.sales}/$id');
-    return Sale.fromJson(response.data);
+    return Sale.fromJson(_asSaleMap(response.data));
   }
 
   Future<Sale> createSale({
@@ -48,23 +69,26 @@ class SaleRepository {
     String? category,
     double? expectedRevenue,
     String? status,
-    String? createdByUserId,
+    String? nextAction,
+    DateTime? nextActionDate,
   }) async {
+    final body = <String, dynamic>{
+      'companyId': companyId,
+      'prospect': prospect,
+      'expectedClosingDate': expectedClosingDate.toIso8601String().split('T')[0],
+      'category': category,
+      'expectedRevenue': expectedRevenue,
+      'status': status,
+      'nextAction': nextAction,
+      'nextActionDate': nextActionDate?.toIso8601String().split('T')[0],
+    };
+    body.removeWhere((k, v) => v == null);
+
     final response = await _apiClient.post(
       AppConstants.sales,
-      data: {
-        'companyId': companyId,
-        'prospect': prospect,
-        'expectedClosingDate': expectedClosingDate.toIso8601String().split(
-          'T',
-        )[0],
-        'category': category,
-        'expectedRevenue': expectedRevenue,
-        'status': status,
-        'createdByUserId': createdByUserId,
-      },
+      data: body,
     );
-    return Sale.fromJson(response.data);
+    return Sale.fromJson(_asSaleMap(response.data));
   }
 
   Future<Sale> updateSale({
@@ -74,21 +98,26 @@ class SaleRepository {
     String? category,
     DateTime? expectedClosingDate,
     double? expectedRevenue,
+    String? nextAction,
+    DateTime? nextActionDate,
   }) async {
+    final data = <String, dynamic>{
+      'companyId': companyId,
+      'prospect': prospect,
+      'category': category,
+      if (expectedClosingDate != null)
+        'expectedClosingDate':
+            expectedClosingDate.toIso8601String().split('T')[0],
+      'expectedRevenue': expectedRevenue,
+      'nextAction': nextAction,
+      'nextActionDate': nextActionDate?.toIso8601String().split('T')[0],
+    };
+
     final response = await _apiClient.put(
       '${AppConstants.sales}/$id',
-      data: {
-        'companyId': companyId,
-        'prospect': prospect,
-        'category': category,
-        if (expectedClosingDate != null)
-          'expectedClosingDate': expectedClosingDate.toIso8601String().split(
-            'T',
-          )[0],
-        'expectedRevenue': expectedRevenue,
-      },
+      data: data,
     );
-    return Sale.fromJson(response.data);
+    return Sale.fromJson(_asSaleMap(response.data));
   }
 
   Future<Sale> changeSaleStatus({
@@ -103,23 +132,31 @@ class SaleRepository {
         'status': status,
         'note': note,
         'changedByUserId': changedByUserId,
-      },
+      }..removeWhere((k, v) => v == null),
     );
-    return Sale.fromJson(response.data);
+    return Sale.fromJson(_asSaleMap(response.data));
   }
 
   Future<List<SaleLog>> getSaleLogs(String saleId) async {
-    final response = await _apiClient.get('${AppConstants.sales}/$saleId/logs');
-    final List<dynamic> data = response.data;
-    return data.map((json) => SaleLog.fromJson(json)).toList();
+    final response =
+        await _apiClient.get('${AppConstants.sales}/$saleId/logs');
+    final data = _asList(response.data);
+    return data
+        .map((json) => SaleLog.fromJson(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<List<SaleActivity>> getSaleActivities(String saleId) async {
     final response = await _apiClient.get(
       '${AppConstants.sales}/$saleId/activities',
     );
-    final List<dynamic> data = response.data;
-    return data.map((json) => SaleActivity.fromJson(json)).toList();
+    final data = _asList(response.data);
+    return data
+        .map(
+          (json) =>
+              SaleActivity.fromJson(Map<String, dynamic>.from(json as Map)),
+        )
+        .toList();
   }
 
   Future<SaleActivity> createSaleActivity({
@@ -136,9 +173,9 @@ class SaleRepository {
         'date': date.toIso8601String().split('T')[0],
         'note': note,
         'createdByUserId': createdByUserId,
-      },
+      }..removeWhere((k, v) => v == null),
     );
-    return SaleActivity.fromJson(response.data);
+    return SaleActivity.fromJson(_asSaleMap(response.data));
   }
 
   Future<SaleActivity> updateSaleActivity({
@@ -154,9 +191,9 @@ class SaleRepository {
         'title': title,
         'note': note,
         if (date != null) 'date': date.toIso8601String().split('T')[0],
-      },
+      }..removeWhere((k, v) => v == null),
     );
-    return SaleActivity.fromJson(response.data);
+    return SaleActivity.fromJson(_asSaleMap(response.data));
   }
 
   Future<void> deleteSaleActivity({

@@ -8,7 +8,9 @@ import '../../data/repositories/company_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/network/storage_service.dart';
+import '../../core/constants/rbac_page_keys.dart';
 import 'auth_provider.dart';
+import 'rbac_provider.dart';
 
 class TasksState {
   final List<Task> tasks;
@@ -111,10 +113,12 @@ class TasksState {
 final userFilteredTasksProvider = Provider<List<Task>>((ref) {
   final tasksState = ref.watch(tasksProvider);
   final currentUserId = ref.watch(currentUserIdProvider);
-  final isAdmin = ref.watch(isAdminProvider);
+  final tasksElevated = ref.watch(
+    rbacModuleAdminProvider(RbacPageKey.tasks),
+  );
 
-  // Admin sees all tasks, regular users see only their assigned tasks
-  if (isAdmin) {
+  // Module / JWT admin sees all tasks; others only assignments
+  if (tasksElevated) {
     return tasksState.tasks;
   }
 

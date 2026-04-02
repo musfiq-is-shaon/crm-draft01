@@ -9,12 +9,17 @@ import '../../providers/contact_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/rbac_prefetch.dart';
-import '../../providers/rbac_provider.dart';
+import '../../providers/rbac_provider.dart'
+    show
+        rbacProvider,
+        rbacMeProvider,
+        rbacAccessDigestProvider,
+        dashboardQuickActionsAdminLayoutProvider,
+        rbacModuleAdminProvider;
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
 import '../sales/sale_detail_page.dart';
-import '../contacts/contact_detail_page.dart';
 import '../tasks/task_detail_page.dart';
 import '../tasks/tasks_list_page.dart';
 import '../expenses/expense_form_page.dart';
@@ -74,19 +79,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final tasksState = ref.watch(tasksProvider);
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
-    final isAdmin = ref.watch(isAdminProvider);
     final authState = ref.watch(authProvider);
     final notificationsState = ref.watch(notificationsProvider);
     final me = ref.watch(rbacMeProvider);
+    ref.watch(rbacAccessDigestProvider);
+    final adminQuickLayout =
+        ref.watch(dashboardQuickActionsAdminLayoutProvider);
+    final tasksModuleAdmin =
+        ref.watch(rbacModuleAdminProvider(RbacPageKey.tasks));
     final canSales = me?.hasNav(RbacPageKey.sales) ?? false;
     final canTasks = me?.hasNav(RbacPageKey.tasks) ?? false;
     final canExpenses = me?.hasNav(RbacPageKey.expenses) ?? false;
-    final canContacts = me?.canNavContacts ?? false;
     final canAttendance =
         me != null &&
         (me.hasNav(RbacPageKey.attendance) || me.hasNav(RbacPageKey.hr));
-    final hasAnyQuickAction = isAdmin
-        ? (canSales || canContacts || canTasks)
+    final hasAnyQuickAction = adminQuickLayout
+        ? (canSales || canTasks)
         : (canSales || canExpenses || canTasks);
 
     final userFilteredTasks = ref.watch(userFilteredTasksProvider);
@@ -235,7 +243,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (!isAdmin)
+                        if (!adminQuickLayout)
                           Row(
                             children: [
                               if (canSales) ...[
@@ -300,9 +308,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Row(
-                                children: [
-                                  if (canSales) ...[
+                              if (canSales)
+                                Row(
+                                  children: [
                                     Expanded(
                                       child: _QuickActionButton(
                                         icon: Icons.person_add_outlined,
@@ -319,48 +327,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                         },
                                       ),
                                     ),
-                                    if (canContacts) const SizedBox(width: 12),
                                   ],
-                                  if (canContacts)
-                                    Expanded(
-                                      child: _QuickActionButton(
-                                        icon: Icons.people_outline,
-                                        label: 'Add Contact',
-                                        color: cs.tertiary,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const ContactFormPage(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              if (canTasks) ...[
+                                ),
+                              if (canSales && canTasks)
                                 const SizedBox(height: 12),
+                              if (canTasks)
                                 Row(
                                   children: [
-                                    Expanded(
-                                      child: _QuickActionButton(
-                                        icon: Icons.task_alt,
-                                        label: 'Add Task',
-                                        color: cs.secondary,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const TaskFormPage(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
                                     Expanded(
                                       child: _QuickActionButton(
                                         icon: Icons.checklist_outlined,
@@ -379,7 +352,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                     ),
                                   ],
                                 ),
-                              ],
                             ],
                           ),
                       ],
@@ -398,7 +370,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
 
               // Pending Tasks for non-admin (after Quick Actions + attendance)
-              if (!isAdmin && canTasks) ...[
+              if (!tasksModuleAdmin && canTasks) ...[
                 SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -549,7 +521,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
               ],
 
-              if (isAdmin && canTasks) ...[
+              if (tasksModuleAdmin && canTasks) ...[
                 SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
 
                 // Recent Tasks

@@ -8,13 +8,21 @@ class RbacRepository {
 
   final ApiClient _api;
 
+  static Map<String, dynamic> _asStringKeyMap(Object? raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    throw FormatException('RBAC payload must be a JSON object');
+  }
+
   Future<RbacMe> fetchMe() async {
     final response = await _api.get(AppConstants.rbacMe);
-    final data = response.data;
-    if (data is! Map<String, dynamic>) {
-      throw FormatException('Invalid RBAC response');
+    var map = _asStringKeyMap(response.data);
+    // Common API shape: { "data": { "navPageKeys": ... } }
+    final inner = map['data'];
+    if (inner is Map) {
+      map = Map<String, dynamic>.from(inner);
     }
-    return RbacMe.fromJson(data);
+    return RbacMe.fromJson(map);
   }
 }
 

@@ -13,13 +13,15 @@ Future<void> prefetchCrmLookupData(WidgetRef ref, RbacMe? me) async {
 
   final isAdmin = ref.read(isAdminProvider);
 
-  final needCompanies = me.canNavCompanies ||
+  final needCompanies =
+      me.canNavCompanies ||
       me.hasNav(RbacPageKey.sales) ||
       me.hasNav(RbacPageKey.tasks) ||
       me.hasNav(RbacPageKey.expenses) ||
       me.canNavContacts;
 
-  final needUsers = me.hasNav(RbacPageKey.sales) ||
+  final needUsers =
+      me.hasNav(RbacPageKey.sales) ||
       me.hasNav(RbacPageKey.tasks) ||
       me.hasNav(RbacPageKey.expenses) ||
       me.hasNav(RbacPageKey.hr) ||

@@ -4,6 +4,7 @@ import '../../core/theme/app_theme_colors.dart';
 import '../pages/settings/company_profile_edit_page.dart';
 import '../pages/settings/edit_profile_page.dart';
 import '../providers/auth_provider.dart';
+import '../providers/rbac_provider.dart' show companyProfileEditAllowedProvider;
 import '../providers/company_profile_provider.dart';
 import 'crm_card.dart';
 
@@ -40,7 +41,7 @@ class _ProfileOverviewBodyState extends ConsumerState<ProfileOverviewBody> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final isAdmin = ref.watch(isAdminProvider);
+    final canEditCompanyProfile = ref.watch(companyProfileEditAllowedProvider);
     final companyState = ref.watch(companyProfileProvider);
     final company = companyState.profile;
 
@@ -92,7 +93,7 @@ class _ProfileOverviewBodyState extends ConsumerState<ProfileOverviewBody> {
           context: context,
           title: 'Company',
           subtitle: 'Organization information',
-          onEdit: isAdmin && company != null
+          onEdit: canEditCompanyProfile && company != null
               ? () async {
                   final ok = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(

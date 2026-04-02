@@ -143,6 +143,9 @@ class StatusBadge extends StatelessWidget {
           return status[0].toUpperCase() + status.substring(1).toLowerCase();
       }
     }
+    if (status.isEmpty) {
+      return '—';
+    }
     switch (status.toLowerCase()) {
       case 'in_progress':
         return 'In Progress';

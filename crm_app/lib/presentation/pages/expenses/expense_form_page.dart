@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/expense_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/rbac_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../widgets/searchable_dropdown.dart';
@@ -444,7 +446,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = ref.watch(isAdminProvider);
+    final isAdmin = ref.watch(rbacModuleAdminProvider(RbacPageKey.expenses));
     final bgColor = AppThemeColors.backgroundColor(context);
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);

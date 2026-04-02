@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/sale_model.dart';
+import '../../../data/models/status_config_model.dart';
 import '../../providers/sale_provider.dart';
+import '../../providers/status_config_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -187,6 +189,21 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
                     textPrimary,
                     textSecondary,
                   ),
+                  if (sale.nextAction != null &&
+                      sale.nextAction!.trim().isNotEmpty)
+                    _buildInfoRow(
+                      'Next action',
+                      sale.nextAction!,
+                      textPrimary,
+                      textSecondary,
+                    ),
+                  if (sale.nextActionDate != null)
+                    _buildInfoRow(
+                      'Next action date',
+                      '${sale.nextActionDate!.year}-${sale.nextActionDate!.month.toString().padLeft(2, '0')}-${sale.nextActionDate!.day.toString().padLeft(2, '0')}',
+                      textPrimary,
+                      textSecondary,
+                    ),
                   _buildInfoRow(
                     'Created By',
                     sale.createdByUser?.name ?? 'N/A',
@@ -207,60 +224,48 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
                   ),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'lead',
-                  primaryColor,
-                  textPrimary,
-                ),
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'prospect',
-                  primaryColor,
-                  textPrimary,
-                ),
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'proposal',
-                  primaryColor,
-                  textPrimary,
-                ),
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'negotiation',
-                  primaryColor,
-                  textPrimary,
-                ),
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'closed_won',
-                  cs.tertiary,
-                  textPrimary,
-                ),
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'closed_lost',
-                  cs.error,
-                  textPrimary,
-                ),
-                _buildStatusButton(
-                  context,
-                  sale,
-                  'disqualified',
-                  cs.outline,
-                  textPrimary,
-                ),
-              ],
+            Builder(
+              builder: (context) {
+                final cfg = ref.watch(statusConfigProvider).valueOrNull;
+                var pipeline = List<String>.from(
+                  cfg != null && cfg.salesStatuses.isNotEmpty
+                      ? cfg.salesStatuses
+                      : StatusConfig.defaultDealPipelineStatuses,
+                );
+                if (pipeline.length > 24) {
+                  pipeline = pipeline.take(24).toList();
+                }
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: pipeline.map((st) {
+                    final btnColor = st == 'closed_won'
+                        ? cs.tertiary
+                        : st == 'closed_lost'
+                            ? cs.error
+                            : st == 'disqualified'
+                                ? cs.outline
+                                : primaryColor;
+                    return _buildStatusButton(
+                      context,
+                      sale,
+                      st,
+                      btnColor,
+                      textPrimary,
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+
+            _buildLogsSection(
+              context,
+              sale.id,
+              surfaceColor,
+              textPrimary,
+              textSecondary,
+              primaryColor,
             ),
             const SizedBox(height: 24),
 
@@ -276,6 +281,83 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLogsSection(
+    BuildContext context,
+    String saleId,
+    Color surfaceColor,
+    Color textPrimary,
+    Color textSecondary,
+    Color primaryColor,
+  ) {
+    final logsAsync = ref.watch(saleLogsProvider(saleId));
+
+    return logsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, st) => const SizedBox.shrink(),
+      data: (logs) {
+        if (logs.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Status history',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...logs.map(
+              (log) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: CRMCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (log.status != null)
+                            StatusBadge(status: log.status!, type: 'sale'),
+                          const Spacer(),
+                          if (log.createdAt != null)
+                            Text(
+                              _formatDate(log.createdAt!),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (log.note != null && log.note!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          log.note!,
+                          style: TextStyle(color: textSecondary, fontSize: 14),
+                        ),
+                      ],
+                      if (log.changedByUser != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'By ${log.changedByUser!.name}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -608,10 +690,13 @@ class _SaleDetailPageState extends ConsumerState<SaleDetailPage> {
           onTap: isSelected
               ? null
               : () async {
-                  await ref
-                      .read(salesProvider.notifier)
-                      .changeSaleStatus(id: sale.id, status: status);
+                  await ref.read(salesProvider.notifier).changeSaleStatus(
+                        id: sale.id,
+                        status: status,
+                        changedByUserId: ref.read(currentUserIdProvider),
+                      );
                   ref.invalidate(saleDetailProvider(sale.id));
+                  ref.invalidate(saleLogsProvider(sale.id));
                   if (status == 'closed_won' && context.mounted) {
                     HapticFeedback.mediumImpact();
                     setState(() => _celebrating = true);
@@ -712,6 +797,8 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
   late TextEditingController _prospectController;
   late TextEditingController _revenueController;
   late TextEditingController _closingDateController;
+  late TextEditingController _nextActionController;
+  late TextEditingController _nextActionDateController;
   late ConfettiController _confettiController;
   String _category = 'warm';
   String _status = 'lead';
@@ -736,6 +823,14 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
           ? '${widget.sale!.expectedClosingDate!.year}-${widget.sale!.expectedClosingDate!.month.toString().padLeft(2, '0')}-${widget.sale!.expectedClosingDate!.day.toString().padLeft(2, '0')}'
           : '',
     );
+    _nextActionController = TextEditingController(
+      text: widget.sale?.nextAction ?? '',
+    );
+    _nextActionDateController = TextEditingController(
+      text: widget.sale?.nextActionDate != null
+          ? '${widget.sale!.nextActionDate!.year}-${widget.sale!.nextActionDate!.month.toString().padLeft(2, '0')}-${widget.sale!.nextActionDate!.day.toString().padLeft(2, '0')}'
+          : '',
+    );
     if (widget.sale != null) {
       _category = widget.sale!.category ?? 'warm';
       _status = widget.sale!.status;
@@ -756,6 +851,8 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
     _prospectController.dispose();
     _revenueController.dispose();
     _closingDateController.dispose();
+    _nextActionController.dispose();
+    _nextActionDateController.dispose();
     super.dispose();
   }
 
@@ -949,6 +1046,22 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
     }
   }
 
+  String _saleFormEnumLabel(String raw) {
+    if (raw.isEmpty) return '—';
+    switch (raw) {
+      case 'closed_won':
+        return 'Closed Won';
+      case 'closed_lost':
+        return 'Closed Lost';
+      case 'in_progress':
+        return 'In Progress';
+      default:
+        final t = raw.replaceAll('_', ' ');
+        if (t.isEmpty) return '—';
+        return t[0].toUpperCase() + t.substring(1);
+    }
+  }
+
   Future<void> _saveSale() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -965,27 +1078,11 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
           return;
         }
 
-        // Get the current user ID
-        final currentUserId = ref.read(currentUserIdProvider);
+        final nextActionDate = _nextActionDateController.text.isNotEmpty
+            ? DateTime.tryParse(_nextActionDateController.text)
+            : null;
 
-        // If current user exists, set them as the KAM of the selected company
-        if (currentUserId != null) {
-          try {
-            await ref
-                .read(companiesProvider.notifier)
-                .updateCompany(
-                  id: _selectedCompanyId!,
-                  kamUserId: currentUserId,
-                );
-          } catch (e) {
-            // Continue even if KAM update fails
-          }
-        }
-
-        // Create the deal with current user as createdByUserId
-        await ref
-            .read(salesProvider.notifier)
-            .createSale(
+        await ref.read(salesProvider.notifier).createSale(
               companyId: _selectedCompanyId!,
               prospect: _prospectController.text,
               expectedClosingDate:
@@ -994,7 +1091,10 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
               category: _category,
               expectedRevenue: double.tryParse(_revenueController.text),
               status: _status,
-              createdByUserId: currentUserId,
+              nextAction: _nextActionController.text.trim().isEmpty
+                  ? null
+                  : _nextActionController.text.trim(),
+              nextActionDate: nextActionDate,
             );
 
         if (!mounted) return;
@@ -1012,9 +1112,11 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
       }
 
       // Update existing sale
-      await ref
-          .read(salesProvider.notifier)
-          .updateSale(
+      final nextActionDate = _nextActionDateController.text.isNotEmpty
+          ? DateTime.tryParse(_nextActionDateController.text)
+          : null;
+
+      await ref.read(salesProvider.notifier).updateSale(
             id: widget.sale!.id,
             prospect: _prospectController.text,
             category: _category,
@@ -1023,6 +1125,10 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
               _closingDateController.text,
             ),
             companyId: _selectedCompanyId,
+            nextAction: _nextActionController.text.trim().isEmpty
+                ? null
+                : _nextActionController.text.trim(),
+            nextActionDate: nextActionDate,
           );
 
       if (mounted) {
@@ -1255,19 +1361,21 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Category
                 Text(
-                  'Category',
+                  'Next action',
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: _category,
-                  isExpanded: true,
+                TextFormField(
+                  controller: _nextActionController,
+                  style: TextStyle(color: textPrimary),
                   decoration: InputDecoration(
+                    hintText: 'e.g. Follow up call',
+                    hintStyle:
+                        TextStyle(color: textSecondary.withValues(alpha: 0.6)),
                     filled: true,
                     fillColor: surfaceColor,
                     border: OutlineInputBorder(
@@ -1279,76 +1387,189 @@ class _SaleFormPageState extends ConsumerState<SaleFormPage> {
                       borderSide: BorderSide(color: borderColor),
                     ),
                   ),
-                  dropdownColor: surfaceColor,
-                  items: const [
-                    DropdownMenuItem(value: 'hot', child: Text('Hot')),
-                    DropdownMenuItem(value: 'warm', child: Text('Warm')),
-                    DropdownMenuItem(value: 'cold', child: Text('Cold')),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _category = value ?? 'warm');
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Next action date',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nextActionDateController,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'YYYY-MM-DD',
+                    hintStyle:
+                        TextStyle(color: textSecondary.withValues(alpha: 0.6)),
+                    filled: true,
+                    fillColor: surfaceColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    suffixIcon: Icon(
+                      Icons.calendar_today,
+                      color: textSecondary,
+                    ),
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _nextActionDateController.text.isNotEmpty
+                          ? DateTime.tryParse(_nextActionDateController.text) ??
+                                DateTime.now()
+                          : DateTime.now(),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 5),
+                      ),
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _nextActionDateController.text =
+                            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                      });
+                    }
                   },
                 ),
                 const SizedBox(height: 20),
 
-                // Status
-                if (widget.sale == null) ...[
-                  Text(
-                    'Status',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: _status,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: surfaceColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: borderColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: borderColor),
-                      ),
-                    ),
-                    dropdownColor: surfaceColor,
-                    items: const [
-                      DropdownMenuItem(value: 'lead', child: Text('Lead')),
-                      DropdownMenuItem(
-                        value: 'prospect',
-                        child: Text('Prospect'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'proposal',
-                        child: Text('Proposal'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'negotiation',
-                        child: Text('Negotiation'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'closed_won',
-                        child: Text('Closed Won'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'closed_lost',
-                        child: Text('Closed Lost'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'disqualified',
-                        child: Text('Disqualified'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() => _status = value ?? 'lead');
-                    },
-                  ),
-                ],
+                Builder(
+                  builder: (context) {
+                    final cfg = ref.watch(statusConfigProvider).valueOrNull;
+                    final categories = List<String>.from(
+                      cfg != null && cfg.salesCategories.isNotEmpty
+                          ? cfg.salesCategories
+                          : const ['hot', 'warm', 'cold'],
+                    );
+                    final pipeline = List<String>.from(
+                      cfg != null && cfg.salesStatuses.isNotEmpty
+                          ? cfg.salesStatuses
+                          : StatusConfig.defaultDealPipelineStatuses,
+                    );
+                    if (categories.isEmpty) {
+                      categories.addAll(
+                        List<String>.from(['hot', 'warm', 'cold']),
+                      );
+                    }
+                    if (pipeline.isEmpty) {
+                      pipeline.addAll(
+                        List<String>.from(StatusConfig.defaultDealPipelineStatuses),
+                      );
+                    }
+
+                    if (!categories.contains(_category)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        setState(() => _category = categories.first);
+                      });
+                    }
+                    if (widget.sale == null && !pipeline.contains(_status)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        setState(() => _status = pipeline.first);
+                      });
+                    }
+
+                    final categoryValue =
+                        categories.contains(_category) ? _category : categories.first;
+                    final statusValue =
+                        pipeline.contains(_status) ? _status : pipeline.first;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Category',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey('cat-$categoryValue-${categories.join()}'),
+                          initialValue: categoryValue,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: surfaceColor,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: borderColor),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: borderColor),
+                            ),
+                          ),
+                          dropdownColor: surfaceColor,
+                          items: categories
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(_saleFormEnumLabel(c)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _category = value ?? categories.first);
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        if (widget.sale == null) ...[
+                          Text(
+                            'Status',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey('st-$statusValue-${pipeline.join()}'),
+                            initialValue: statusValue,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: surfaceColor,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: borderColor),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: borderColor),
+                              ),
+                            ),
+                            dropdownColor: surfaceColor,
+                            items: pipeline
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(_saleFormEnumLabel(s)),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() => _status = value ?? pipeline.first);
+                            },
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),

@@ -23,7 +23,8 @@ class MorePage extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final me = ref.watch(rbacMeProvider);
-    final showAttendance = me != null &&
+    final showAttendance =
+        me != null &&
         (me.hasNav(RbacPageKey.attendance) || me.hasNav(RbacPageKey.hr));
     final showLeave = me?.hasNav(RbacPageKey.leaves) ?? false;
 
@@ -45,9 +46,7 @@ class MorePage extends ConsumerWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfilePage(),
-                ),
+                MaterialPageRoute(builder: (context) => const ProfilePage()),
               );
             },
             child: Row(
@@ -126,7 +125,8 @@ class MorePage extends ConsumerWidget {
             primaryColor: primaryColor,
             children: [
               if (showAttendance)
-                _buildMenuItem(context,
+                _buildMenuItem(
+                  context,
                   icon: Icons.access_time_outlined,
                   title: 'Attendance Records',
                   subtitle: 'View attendance history',
@@ -144,7 +144,8 @@ class MorePage extends ConsumerWidget {
                   },
                 ),
               if (showLeave)
-                _buildMenuItem(context,
+                _buildMenuItem(
+                  context,
                   icon: Icons.event_note_outlined,
                   title: 'Leave',
                   subtitle: 'Apply and track leave requests',
@@ -161,7 +162,8 @@ class MorePage extends ConsumerWidget {
                     );
                   },
                 ),
-              _buildMenuItem(context,
+              _buildMenuItem(
+                context,
                 icon: Icons.settings_outlined,
                 title: 'Settings',
                 subtitle: 'App settings',
@@ -189,7 +191,8 @@ class MorePage extends ConsumerWidget {
             textTertiary: textTertiary,
             primaryColor: primaryColor,
             children: [
-              _buildMenuItem(context,
+              _buildMenuItem(
+                context,
                 icon: Icons.lock_outline,
                 title: 'Change Password',
                 subtitle: 'Update your password',
@@ -206,7 +209,8 @@ class MorePage extends ConsumerWidget {
                   );
                 },
               ),
-              _buildMenuItem(context,
+              _buildMenuItem(
+                context,
                 icon: Icons.notifications_outlined,
                 title: 'Notifications',
                 subtitle: 'Manage notifications',
@@ -223,7 +227,8 @@ class MorePage extends ConsumerWidget {
                   );
                 },
               ),
-              _buildMenuItem(context,
+              _buildMenuItem(
+                context,
                 icon: Icons.help_outline,
                 title: 'Help & Support',
                 subtitle: 'Get help',
@@ -250,7 +255,8 @@ class MorePage extends ConsumerWidget {
             textTertiary: textTertiary,
             primaryColor: primaryColor,
             children: [
-              _buildMenuItem(context,
+              _buildMenuItem(
+                context,
                 icon: Icons.logout,
                 title: 'Logout',
                 subtitle: 'Sign out of your account',
@@ -296,7 +302,8 @@ class MorePage extends ConsumerWidget {
                   }
                 },
               ),
-              _buildMenuItem(context,
+              _buildMenuItem(
+                context,
                 icon: Icons.delete_forever,
                 title: 'Delete Account',
                 subtitle: 'Permanently delete your account',
@@ -432,11 +439,7 @@ class MorePage extends ConsumerWidget {
                 color: accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                color: accent,
-                size: 20,
-              ),
+              child: Icon(icon, color: accent, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -448,7 +451,8 @@ class MorePage extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: textColor ??
+                      color:
+                          textColor ??
                           textPrimary ??
                           Theme.of(context).colorScheme.onSurface,
                     ),
@@ -457,7 +461,8 @@ class MorePage extends ConsumerWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: textTertiary ??
+                      color:
+                          textTertiary ??
                           Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -466,7 +471,8 @@ class MorePage extends ConsumerWidget {
             ),
             Icon(
               Icons.chevron_right,
-              color: textTertiary ??
+              color:
+                  textTertiary ??
                   Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ],

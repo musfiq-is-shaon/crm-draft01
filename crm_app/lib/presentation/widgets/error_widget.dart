@@ -91,13 +91,17 @@ class EmptyStateWidget extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Unbounded height (e.g. broken parent) + minHeight: infinity caused huge overflows.
+        final minH = constraints.hasBoundedHeight && constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : 0.0;
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.lg,
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            constraints: BoxConstraints(minHeight: minH),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 400),

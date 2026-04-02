@@ -8,7 +8,9 @@ import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/company_provider.dart';
+import '../../../core/constants/rbac_page_keys.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/rbac_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../widgets/crm_card.dart';
@@ -55,7 +57,7 @@ class _TaskDetailPageState extends ConsumerState<TaskDetailPage> {
     final tasksState = ref.watch(tasksProvider);
     final task =
         tasksState.tasks.where((t) => t.id == widget.taskId).firstOrNull;
-    final isAdmin = ref.watch(isAdminProvider);
+    final isAdmin = ref.watch(rbacModuleAdminProvider(RbacPageKey.tasks));
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
@@ -950,7 +952,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
               // Assign By User Dropdown (Optional - Admin only)
               Consumer(
                 builder: (context, ref, child) {
-                  final isAdmin = ref.watch(isAdminProvider);
+                  final isAdmin = ref.watch(rbacModuleAdminProvider(RbacPageKey.tasks));
                   final usersState = ref.watch(usersProvider);
                   final selectedUser = _selectedAssignByUserId != null
                       ? usersState.users

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/company_model.dart';
 import '../../providers/contact_provider.dart';
+import '../../providers/rbac_provider.dart'
+    show rbacAccessDigestProvider, rbacModuleAdminProvider;
 import '../../providers/company_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/avatar_widget.dart';
@@ -40,6 +43,8 @@ class _ContactsListPageState extends ConsumerState<ContactsListPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(rbacAccessDigestProvider);
+    ref.watch(rbacModuleAdminProvider(RbacPageKey.contacts));
     final contactsState = ref.watch(contactsProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);

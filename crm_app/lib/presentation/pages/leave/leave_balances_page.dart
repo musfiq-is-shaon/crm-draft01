@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/leave_model.dart';
 import '../../../data/repositories/leave_repository.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/rbac_provider.dart' show leaveManagementElevatedProvider;
 import '../../providers/leave_provider.dart';
 
 class LeaveBalancesPage extends ConsumerStatefulWidget {
@@ -49,10 +50,10 @@ class _LeaveBalancesPageState extends ConsumerState<LeaveBalancesPage> {
   }
 
   bool get _canEditBalances {
-    final isAdmin = ref.read(isAdminProvider);
+    final leaveElevated = ref.read(leaveManagementElevatedProvider);
     final isMgr =
         ref.read(leaveProvider.select((s) => s.reportingInfo?.isReportingManager ?? false));
-    return isAdmin || isMgr;
+    return leaveElevated || isMgr;
   }
 
   Future<void> _load() async {

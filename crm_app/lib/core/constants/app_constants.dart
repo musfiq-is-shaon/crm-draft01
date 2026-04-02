@@ -20,6 +20,10 @@ class AppConstants {
   static const String contacts = '/api/contacts';
   static const String tasks = '/api/tasks';
   static const String sales = '/api/sales';
+  static const String orders = '/api/orders';
+  static const String renewals = '/api/renewals';
+  static const String renewalsBin = '/api/renewals/bin';
+  static const String renewalsRestore = '/api/renewals/restore';
   static const String statusConfig = '/api/status-config';
   static const String companyProfile = '/api/company-profile';
   static const String currencies = '/api/currencies';

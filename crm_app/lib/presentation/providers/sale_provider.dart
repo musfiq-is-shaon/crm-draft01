@@ -12,6 +12,12 @@ class SalesState {
   final String? error;
   final String? selectedStatus;
   final String? selectedCategory;
+  /// Passed to `GET /api/sales?search=`
+  final String? listSearch;
+  /// Passed to `GET /api/sales?companyId=`
+  final String? listCompanyId;
+  /// Passed to `GET /api/sales?category=`
+  final String? listCategory;
 
   const SalesState({
     this.sales = const [],
@@ -19,6 +25,9 @@ class SalesState {
     this.error,
     this.selectedStatus,
     this.selectedCategory,
+    this.listSearch,
+    this.listCompanyId,
+    this.listCategory,
   });
 
   SalesState copyWith({
@@ -27,8 +36,14 @@ class SalesState {
     String? error,
     String? selectedStatus,
     String? selectedCategory,
+    String? listSearch,
+    String? listCompanyId,
+    String? listCategory,
     bool clearStatus = false,
     bool clearCategory = false,
+    bool clearListSearch = false,
+    bool clearListCompanyId = false,
+    bool clearListCategory = false,
   }) {
     return SalesState(
       sales: sales ?? this.sales,
@@ -40,12 +55,19 @@ class SalesState {
       selectedCategory: clearCategory
           ? null
           : (selectedCategory ?? this.selectedCategory),
+      listSearch: clearListSearch ? null : (listSearch ?? this.listSearch),
+      listCompanyId:
+          clearListCompanyId ? null : (listCompanyId ?? this.listCompanyId),
+      listCategory:
+          clearListCategory ? null : (listCategory ?? this.listCategory),
     );
   }
 
   List<Sale> get filteredSales {
     return sales.where((sale) {
-      if (selectedStatus != null && sale.status != selectedStatus) return false;
+      if (selectedStatus != null && sale.status != selectedStatus) {
+        return false;
+      }
       if (selectedCategory != null && sale.category != selectedCategory) {
         return false;
       }
@@ -122,9 +144,12 @@ class SalesNotifier extends StateNotifier<SalesState> {
   Future<void> loadSales() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final sales = await _saleRepository.getSales();
+      final sales = await _saleRepository.getSales(
+        search: state.listSearch,
+        companyId: state.listCompanyId,
+        category: state.listCategory,
+      );
 
-      // Collect all unique company IDs and user IDs needed
       final companyIds = <String>{};
       final userIds = <String>{};
 
@@ -137,7 +162,6 @@ class SalesNotifier extends StateNotifier<SalesState> {
         }
       }
 
-      // Batch fetch all companies and users in parallel
       final companiesFuture = companyIds.isNotEmpty
           ? _companyRepository.getCompaniesByIds(companyIds.toList())
           : Future.value(<String, Company>{});
@@ -153,43 +177,64 @@ class SalesNotifier extends StateNotifier<SalesState> {
       final companiesMap = results[0] as Map<String, Company>;
       final usersMap = results[1] as Map<String, User>;
 
-      // Now map sales with pre-fetched data
       final salesWithData = sales.map((sale) {
         Company? company;
         User? user;
 
-        // Get company from map
         if (sale.companyId != null &&
             companiesMap.containsKey(sale.companyId)) {
           company = companiesMap[sale.companyId];
         }
 
-        // Get user from map
         if (sale.createdByUserId != null &&
             usersMap.containsKey(sale.createdByUserId)) {
           user = usersMap[sale.createdByUserId];
         }
 
-        return Sale(
-          id: sale.id,
-          companyId: sale.companyId,
-          company: company,
-          prospect: sale.prospect,
-          category: sale.category,
-          expectedClosingDate: sale.expectedClosingDate,
-          expectedRevenue: sale.expectedRevenue,
-          status: sale.status,
-          createdByUserId: sale.createdByUserId,
-          createdByUser: user,
-          createdAt: sale.createdAt,
-          updatedAt: sale.updatedAt,
-        );
+        return sale.copyWith(company: company, createdByUser: user);
       }).toList();
 
-      state = state.copyWith(sales: salesWithData, isLoading: false);
+      state = state.copyWith(
+        sales: List<Sale>.from(salesWithData),
+        isLoading: false,
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
+  }
+
+  /// Updates server-side search and reloads (`GET /api/sales?search=`).
+  Future<void> setListSearchAndReload(String? search) async {
+    final trimmed = search?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      state = state.copyWith(clearListSearch: true);
+    } else {
+      state = state.copyWith(listSearch: trimmed, clearListSearch: false);
+    }
+    await loadSales();
+  }
+
+  /// Updates company/category API filters and reloads.
+  Future<void> setListCompanyCategoryAndReload({
+    String? companyId,
+    String? category,
+  }) async {
+    state = state.copyWith(
+      listCompanyId: companyId,
+      listCategory: category,
+      clearListCompanyId: companyId == null || companyId.isEmpty,
+      clearListCategory: category == null || category.isEmpty,
+    );
+    await loadSales();
+  }
+
+  Future<void> clearListApiFiltersAndReload() async {
+    state = state.copyWith(
+      clearListSearch: true,
+      clearListCompanyId: true,
+      clearListCategory: true,
+    );
+    await loadSales();
   }
 
   void setStatusFilter(String? status) {
@@ -219,12 +264,10 @@ class SalesNotifier extends StateNotifier<SalesState> {
     String? category,
     double? expectedRevenue,
     String? status,
-    String? createdByUserId,
+    String? nextAction,
+    DateTime? nextActionDate,
   }) async {
     try {
-      // Get current user if createdByUserId is not provided
-      final userId = createdByUserId;
-
       final sale = await _saleRepository.createSale(
         companyId: companyId,
         prospect: prospect,
@@ -232,18 +275,16 @@ class SalesNotifier extends StateNotifier<SalesState> {
         category: category,
         expectedRevenue: expectedRevenue,
         status: status,
-        createdByUserId: userId,
+        nextAction: nextAction,
+        nextActionDate: nextActionDate,
       );
 
-      // Get the company details with KAM
       Company? company;
       try {
-        final fetchedCompany = await _companyRepository.getCompanyById(
-          companyId,
-        );
+        final fetchedCompany =
+            await _companyRepository.getCompanyById(companyId);
         if (fetchedCompany != null) {
           company = fetchedCompany;
-          // Fetch users to get KAM
           List<User> users = [];
           try {
             users = await _userRepository.getUsers();
@@ -251,7 +292,6 @@ class SalesNotifier extends StateNotifier<SalesState> {
             // Ignore
           }
           final usersMap = {for (var u in users) u.id: u};
-          // Attach KAM user to company
           if (company.kamUserId != null &&
               usersMap.containsKey(company.kamUserId)) {
             company = Company(
@@ -270,19 +310,19 @@ class SalesNotifier extends StateNotifier<SalesState> {
         // Ignore company fetch error
       }
 
-      final saleWithCompany = Sale(
-        id: sale.id,
-        companyId: sale.companyId,
-        company: company,
-        prospect: sale.prospect,
-        category: sale.category,
-        expectedClosingDate: sale.expectedClosingDate,
-        expectedRevenue: sale.expectedRevenue,
-        status: sale.status,
-        createdByUserId: sale.createdByUserId,
-        createdByUser: sale.createdByUser,
-        createdAt: sale.createdAt,
-        updatedAt: sale.updatedAt,
+      User? createdBy;
+      if (sale.createdByUserId != null) {
+        try {
+          createdBy =
+              await _userRepository.getUserById(sale.createdByUserId!);
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      final saleWithCompany = sale.copyWith(
+        company: company ?? sale.company,
+        createdByUser: createdBy ?? sale.createdByUser,
       );
 
       state = state.copyWith(sales: [saleWithCompany, ...state.sales]);
@@ -300,6 +340,8 @@ class SalesNotifier extends StateNotifier<SalesState> {
     String? category,
     DateTime? expectedClosingDate,
     double? expectedRevenue,
+    String? nextAction,
+    DateTime? nextActionDate,
   }) async {
     try {
       final sale = await _saleRepository.updateSale(
@@ -309,18 +351,17 @@ class SalesNotifier extends StateNotifier<SalesState> {
         category: category,
         expectedClosingDate: expectedClosingDate,
         expectedRevenue: expectedRevenue,
+        nextAction: nextAction,
+        nextActionDate: nextActionDate,
       );
 
-      // Find existing sale to preserve company data
       final existingSale = state.sales.where((s) => s.id == id).firstOrNull;
       Company? company = existingSale?.company;
 
-      // If companyId was changed, fetch new company
       if (companyId != null && companyId != existingSale?.companyId) {
         try {
-          final fetchedCompany = await _companyRepository.getCompanyById(
-            companyId,
-          );
+          final fetchedCompany =
+              await _companyRepository.getCompanyById(companyId);
           if (fetchedCompany != null) {
             company = fetchedCompany;
           }
@@ -329,24 +370,14 @@ class SalesNotifier extends StateNotifier<SalesState> {
         }
       }
 
-      final updatedSale = Sale(
-        id: sale.id,
+      final updatedSale = sale.copyWith(
         companyId: companyId ?? sale.companyId,
         company: company ?? sale.company,
-        prospect: sale.prospect,
-        category: sale.category,
-        expectedClosingDate: sale.expectedClosingDate,
-        expectedRevenue: sale.expectedRevenue,
-        status: sale.status,
-        createdByUserId: sale.createdByUserId,
-        createdByUser: sale.createdByUser,
-        createdAt: sale.createdAt,
-        updatedAt: sale.updatedAt,
+        createdByUser: existingSale?.createdByUser ?? sale.createdByUser,
       );
 
-      final updatedSales = state.sales
-          .map((s) => s.id == id ? updatedSale : s)
-          .toList();
+      final updatedSales =
+          state.sales.map((s) => s.id == id ? updatedSale : s).toList();
       state = state.copyWith(sales: updatedSales);
       await loadSales();
     } catch (e) {
@@ -359,34 +390,24 @@ class SalesNotifier extends StateNotifier<SalesState> {
     required String id,
     required String status,
     String? note,
+    String? changedByUserId,
   }) async {
     try {
       final sale = await _saleRepository.changeSaleStatus(
         id: id,
         status: status,
         note: note,
+        changedByUserId: changedByUserId,
       );
 
-      // Preserve company data
       final existingSale = state.sales.where((s) => s.id == id).firstOrNull;
-      final updatedSale = Sale(
-        id: sale.id,
-        companyId: sale.companyId,
-        company: existingSale?.company,
-        prospect: sale.prospect,
-        category: sale.category,
-        expectedClosingDate: sale.expectedClosingDate,
-        expectedRevenue: sale.expectedRevenue,
-        status: sale.status,
-        createdByUserId: sale.createdByUserId,
-        createdByUser: sale.createdByUser,
-        createdAt: sale.createdAt,
-        updatedAt: sale.updatedAt,
+      final updatedSale = sale.copyWith(
+        company: existingSale?.company ?? sale.company,
+        createdByUser: existingSale?.createdByUser ?? sale.createdByUser,
       );
 
-      final updatedSales = state.sales
-          .map((s) => s.id == id ? updatedSale : s)
-          .toList();
+      final updatedSales =
+          state.sales.map((s) => s.id == id ? updatedSale : s).toList();
       state = state.copyWith(sales: updatedSales);
       await loadSales();
     } catch (e) {
@@ -421,15 +442,12 @@ final saleDetailProvider = FutureProvider.family<Sale, String>((ref, id) async {
 
   var sale = await saleRepository.getSaleById(id);
 
-  // Try to get company details with KAM
   if (sale.companyId != null && sale.company == null) {
     try {
-      var fetchedCompany = await companyRepository.getCompanyById(
-        sale.companyId!,
-      );
+      var fetchedCompany =
+          await companyRepository.getCompanyById(sale.companyId!);
       if (fetchedCompany != null) {
         var company = fetchedCompany;
-        // Fetch users to get KAM
         List<User> users = [];
         try {
           users = await userRepository.getUsers();
@@ -437,7 +455,6 @@ final saleDetailProvider = FutureProvider.family<Sale, String>((ref, id) async {
           // Ignore
         }
         final usersMap = {for (var u in users) u.id: u};
-        // Attach KAM user to company
         if (company.kamUserId != null &&
             usersMap.containsKey(company.kamUserId)) {
           company = Company(
@@ -451,44 +468,17 @@ final saleDetailProvider = FutureProvider.family<Sale, String>((ref, id) async {
             updatedAt: company.updatedAt,
           );
         }
-        sale = Sale(
-          id: sale.id,
-          companyId: sale.companyId,
-          company: company,
-          prospect: sale.prospect,
-          category: sale.category,
-          expectedClosingDate: sale.expectedClosingDate,
-          expectedRevenue: sale.expectedRevenue,
-          status: sale.status,
-          createdByUserId: sale.createdByUserId,
-          createdByUser: sale.createdByUser,
-          createdAt: sale.createdAt,
-          updatedAt: sale.updatedAt,
-        );
+        sale = sale.copyWith(company: company);
       }
     } catch (e) {
       // Ignore
     }
   }
 
-  // Try to get user details
   if (sale.createdByUserId != null && sale.createdByUser == null) {
     try {
       final user = await userRepository.getUserById(sale.createdByUserId!);
-      sale = Sale(
-        id: sale.id,
-        companyId: sale.companyId,
-        company: sale.company,
-        prospect: sale.prospect,
-        category: sale.category,
-        expectedClosingDate: sale.expectedClosingDate,
-        expectedRevenue: sale.expectedRevenue,
-        status: sale.status,
-        createdByUserId: sale.createdByUserId,
-        createdByUser: user,
-        createdAt: sale.createdAt,
-        updatedAt: sale.updatedAt,
-      );
+      sale = sale.copyWith(createdByUser: user);
     } catch (e) {
       // Ignore
     }
@@ -497,9 +487,14 @@ final saleDetailProvider = FutureProvider.family<Sale, String>((ref, id) async {
   return sale;
 });
 
-// Provider for fetching sale activities
 final saleActivitiesProvider =
     FutureProvider.family<List<SaleActivity>, String>((ref, saleId) async {
-      final saleRepository = ref.watch(saleRepositoryProvider);
-      return saleRepository.getSaleActivities(saleId);
-    });
+  final saleRepository = ref.watch(saleRepositoryProvider);
+  return saleRepository.getSaleActivities(saleId);
+});
+
+final saleLogsProvider =
+    FutureProvider.family<List<SaleLog>, String>((ref, saleId) async {
+  final saleRepository = ref.watch(saleRepositoryProvider);
+  return saleRepository.getSaleLogs(saleId);
+});
