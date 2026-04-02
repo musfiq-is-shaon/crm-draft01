@@ -24,7 +24,6 @@ class ExpenseFormPage extends ConsumerStatefulWidget {
 class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _amountController;
-  late TextEditingController _amountReturnController;
   late TextEditingController _fromLocationController;
   late TextEditingController _toLocationController;
   late TextEditingController _purposeController;
@@ -44,7 +43,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
       duration: const Duration(seconds: 3),
     );
     _amountController = TextEditingController();
-    _amountReturnController = TextEditingController();
     _fromLocationController = TextEditingController();
     _toLocationController = TextEditingController();
     _purposeController = TextEditingController();
@@ -70,8 +68,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
     if (mounted) {
       setState(() {
         _amountController.text = expenseAsync.amount.toString();
-        _amountReturnController.text =
-            expenseAsync.amountReturn?.toString() ?? '';
         _fromLocationController.text = expenseAsync.fromLocation ?? '';
         _toLocationController.text = expenseAsync.toLocation ?? '';
         _purposeController.text = expenseAsync.purpose ?? '';
@@ -87,7 +83,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
   void dispose() {
     _confettiController.dispose();
     _amountController.dispose();
-    _amountReturnController.dispose();
     _fromLocationController.dispose();
     _toLocationController.dispose();
     _purposeController.dispose();
@@ -325,9 +320,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
 
     try {
       final amount = double.tryParse(_amountController.text) ?? 0;
-      final amountReturn = _amountReturnController.text.isNotEmpty
-          ? double.tryParse(_amountReturnController.text)
-          : null;
 
       if (widget.expenseId == null) {
         // Get current user ID
@@ -340,7 +332,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
               companyId: _selectedCompanyId!,
               date: _selectedDate!,
               amount: amount,
-              amountReturn: amountReturn,
+              amountReturn: null,
               fromLocation: _fromLocationController.text.isEmpty
                   ? null
                   : _fromLocationController.text,
@@ -374,7 +366,7 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
               companyId: _selectedCompanyId,
               date: _selectedDate,
               amount: amount,
-              amountReturn: amountReturn,
+              amountReturn: null,
               fromLocation: _fromLocationController.text.isEmpty
                   ? null
                   : _fromLocationController.text,
@@ -629,25 +621,6 @@ class _ExpenseFormPageState extends ConsumerState<ExpenseFormPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Return Amount (only for round trip)
-              if (_selectedTripType == 'round_trip')
-                TextFormField(
-                  controller: _amountReturnController,
-                  style: TextStyle(color: textPrimary),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Return Amount',
-                    labelStyle: TextStyle(color: textSecondary),
-                    hintText: 'Enter return amount',
-                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
-                    prefixText: '${AppConstants.currencySymbol} ',
-                    prefixStyle: TextStyle(color: textPrimary),
-                  ),
-                ),
-              if (_selectedTripType == 'round_trip') const SizedBox(height: 16),
 
               // From Location
               TextFormField(

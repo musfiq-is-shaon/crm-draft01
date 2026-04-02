@@ -7,12 +7,10 @@ import '../../providers/notifications_provider.dart';
 import '../../widgets/crm_card.dart';
 import '../settings/change_password_page.dart';
 import '../settings/settings_page.dart';
-import '../admin/users_page.dart';
 import 'notification_settings_page.dart';
 import 'help_support_page.dart';
 import '../attendance/attendance_records_page.dart';
 import '../leave/leave_list_page.dart';
-import '../shifts/shifts_admin_page.dart';
 import '../profile/profile_page.dart';
 
 class MorePage extends ConsumerWidget {
@@ -22,7 +20,6 @@ class MorePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
-    final isAdmin = ref.watch(isAdminProvider);
 
     final bgColor = AppThemeColors.backgroundColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
@@ -122,43 +119,6 @@ class MorePage extends ConsumerWidget {
             textTertiary: textTertiary,
             primaryColor: primaryColor,
             children: [
-              // Only show Users Management for admin users
-              if (isAdmin)
-                _buildMenuItem(context,
-                  icon: Icons.people_outline,
-                  title: 'Users Management',
-                  subtitle: 'Manage app users',
-                  textPrimary: textPrimary,
-                  textSecondary: textSecondary,
-                  textTertiary: textTertiary,
-                  primaryColor: primaryColor,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const UsersPage(),
-                      ),
-                    );
-                  },
-                ),
-              if (isAdmin)
-                _buildMenuItem(context,
-                  icon: Icons.schedule_outlined,
-                  title: 'Shifts',
-                  subtitle: 'Create shifts and assign staff',
-                  textPrimary: textPrimary,
-                  textSecondary: textSecondary,
-                  textTertiary: textTertiary,
-                  primaryColor: primaryColor,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ShiftsAdminPage(),
-                      ),
-                    );
-                  },
-                ),
               _buildMenuItem(context,
                 icon: Icons.access_time_outlined,
                 title: 'Attendance Records',

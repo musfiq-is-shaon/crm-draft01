@@ -7,7 +7,6 @@ import '../../providers/task_provider.dart';
 import '../../providers/contact_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/kpi_card.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
@@ -54,9 +53,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final salesState = ref.watch(salesProvider);
     final tasksState = ref.watch(tasksProvider);
-    final contactsState = ref.watch(contactsProvider);
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
     final isAdmin = ref.watch(isAdminProvider);
@@ -192,73 +189,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                 ),
               ),
-              if (isAdmin) ...[
-                // KPI Cards
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: AppThemeColors.pagePaddingHorizontal,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Overview',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height:
-                              (MediaQuery.of(context).size.width - 32) /
-                                  2 /
-                                  1.4 *
-                                  2 +
-                              32,
-                          child: GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 1.4,
-                            children: [
-                              KPICard(
-                                title: 'Total Deals',
-                                value: '${salesState.sales.length}',
-                                icon: Icons.trending_up,
-                                iconColor: primary,
-                              ),
-                              KPICard(
-                                title: 'Closed Deals',
-                                value: '${salesState.closed.length}',
-                                icon: Icons.check_circle_outline,
-                                iconColor: cs.tertiary,
-                              ),
-                              KPICard(
-                                title: 'Pending Tasks',
-                                value:
-                                    '${tasksState.pendingTasks.length + tasksState.inProgressTasks.length}',
-                                icon: Icons.pending_actions,
-                                iconColor: cs.secondary,
-                              ),
-                              KPICard(
-                                title: 'Contacts',
-                                value: '${contactsState.contacts.length}',
-                                icon: Icons.people_outline,
-                                iconColor: cs.tertiary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
-              ],
-
               // Quick Actions
               SliverToBoxAdapter(
                 child: Padding(

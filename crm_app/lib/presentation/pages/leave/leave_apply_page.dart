@@ -40,6 +40,7 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
   bool _existingLeavesLoading = false;
   String? _existingLeavesError;
   List<LeaveEntry> _existingLeaves = const [];
+  String? _nonWorkingDayMessage;
 
   @override
   void dispose() {
@@ -124,6 +125,9 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
     }
   }
 
+  bool get _selectedPeriodHasNoWorkingDay =>
+      !_workingDaysLoading && _datesComplete() && (_workingDays ?? 0) == 0;
+
   bool _canSubmit(LeaveState leaveState) {
     if (_submitting || _celebrating) return false;
     if (_existingLeavesLoading) return false;
@@ -134,6 +138,7 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
     if (_leaveTypeId == null || _leaveTypeId!.isEmpty) return false;
     if (!_datesComplete()) return false;
     if (_workingDays == null) return false;
+    if (_selectedPeriodHasNoWorkingDay) return false;
 
     return _requestedLeaveDays() > 0;
   }
@@ -239,9 +244,15 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
           .read(leaveProvider.notifier)
           .calculateWorkingDays(startDate: start, endDate: end);
       if (mounted) {
+        final nextMessage = days == 0
+            ? (_durationMode == LeaveApplyDurationMode.multipleDays
+                  ? 'Selected date range is fully holiday/weekend for your assigned shift. Please choose working days.'
+                  : 'Selected date is a holiday/weekend for your assigned shift. Please choose a working day.')
+            : null;
         setState(() {
           _workingDays = days;
           _workingDaysLoading = false;
+          _nonWorkingDayMessage = nextMessage;
         });
       }
     } catch (_) {
@@ -249,6 +260,7 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
         setState(() {
           _workingDays = null;
           _workingDaysLoading = false;
+          _nonWorkingDayMessage = null;
         });
       }
     }
@@ -264,7 +276,10 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
       lastDate: DateTime(now.year + 2),
     );
     if (d != null) {
-      setState(() => _leaveDate = _dateOnly(d));
+      setState(() {
+        _leaveDate = _dateOnly(d);
+        _nonWorkingDayMessage = null;
+      });
       _scheduleWorkingDaysCalc();
     }
   }
@@ -283,6 +298,7 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
       setState(() {
         _rangeStart = _dateOnly(range.start);
         _rangeEnd = _dateOnly(range.end);
+        _nonWorkingDayMessage = null;
       });
       _scheduleWorkingDaysCalc();
     }
@@ -310,6 +326,7 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
         _halfDayPart = null;
       }
       _workingDays = null;
+      _nonWorkingDayMessage = null;
     });
     _scheduleWorkingDaysCalc();
   }
@@ -376,6 +393,17 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
         messenger.showSnackBar(
           const SnackBar(
             content: Text('Select a leave type.'),
+          ),
+        );
+        return;
+      }
+      if (_selectedPeriodHasNoWorkingDay) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              _nonWorkingDayMessage ??
+                  'Selected date is holiday/weekend for your assigned shift.',
+            ),
           ),
         );
         return;
@@ -721,6 +749,19 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: textPrimary,
+                ),
+              ),
+            if (_nonWorkingDayMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _nonWorkingDayMessage!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.red.shade800,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             if (_existingLeavesError != null)
