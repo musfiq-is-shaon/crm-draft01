@@ -320,6 +320,7 @@ class _TaskDetailPageState extends ConsumerState<TaskDetailPage> {
                           id: task.id,
                           status: status,
                           isAdmin: isAdmin,
+                          actorUserId: ref.read(currentUserIdProvider),
                         );
 
                     if (!context.mounted) return;

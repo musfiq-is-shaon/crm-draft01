@@ -87,7 +87,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ),
                   ),
                   title: Text(
-                    item.title,
+                    item.displayTitle,
                     style: TextStyle(
                       color: textPrimary,
                       fontWeight: item.isRead ? FontWeight.w500 : FontWeight.w700,
@@ -96,10 +96,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (item.message.trim().isNotEmpty) ...[
+                      if (item.displayMessage.trim().isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          item.message,
+                          item.displayMessage,
                           style: TextStyle(color: textSecondary),
                         ),
                       ],

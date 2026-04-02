@@ -103,7 +103,11 @@ class TaskRepository {
   }) async {
     final response = await _apiClient.patch(
       '${AppConstants.tasks}/$id/status',
-      data: {'status': status, 'note': note, 'actorUserId': actorUserId},
+      data: {
+        'status': status,
+        if (note != null) 'note': note,
+        if (actorUserId != null && actorUserId.isNotEmpty) 'actorUserId': actorUserId,
+      },
     );
     return Task.fromJson(response.data);
   }

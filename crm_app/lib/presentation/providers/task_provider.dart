@@ -477,6 +477,7 @@ class TasksNotifier extends StateNotifier<TasksState> {
     required String status,
     String? note,
     required bool isAdmin,
+    String? actorUserId,
   }) async {
     final existing = state.tasks.where((t) => t.id == id).firstOrNull;
     if (existing != null &&
@@ -495,6 +496,7 @@ class TasksNotifier extends StateNotifier<TasksState> {
         id: id,
         status: status,
         note: note,
+        actorUserId: actorUserId,
       );
 
       // Batch enrich the updated task with company and user details (like loadTasks)

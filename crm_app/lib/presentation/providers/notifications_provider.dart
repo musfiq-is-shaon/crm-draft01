@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/repositories/notification_repository.dart';
+import '../../data/repositories/task_repository.dart';
+import '../../data/repositories/user_repository.dart';
 
 class NotificationsState {
   const NotificationsState({
@@ -31,16 +33,104 @@ class NotificationsState {
 const Object _sentinel = Object();
 
 class NotificationsNotifier extends StateNotifier<NotificationsState> {
-  NotificationsNotifier(this._repository) : super(const NotificationsState());
+  NotificationsNotifier(
+    this._repository,
+    this._userRepository,
+    this._taskRepository,
+  ) : super(const NotificationsState());
 
   final NotificationRepository _repository;
+  final UserRepository _userRepository;
+  final TaskRepository _taskRepository;
+
+  Future<List<NotificationItem>> _resolveActorNames(
+    List<NotificationItem> items,
+  ) async {
+    final needIds = <String>{};
+    for (final i in items) {
+      if (i.actorDisplayName != null && i.actorDisplayName!.trim().isNotEmpty) {
+        continue;
+      }
+      final id = i.actorUserId;
+      if (id != null && id.isNotEmpty) needIds.add(id);
+    }
+    if (needIds.isEmpty) return items;
+
+    try {
+      final users = await _userRepository.getUsers();
+      final idToName = {for (final u in users) u.id: u.name};
+      return items.map((i) {
+        final id = i.actorUserId;
+        if (id == null || id.isEmpty) return i;
+        final name = idToName[id];
+        if (name == null || name.isEmpty) return i;
+        return i.copyWithResolvedActor(name);
+      }).toList();
+    } catch (_) {
+      return items;
+    }
+  }
+
+  /// When the API only sends "someone" but includes a task id, use the latest task log actor.
+  Future<List<NotificationItem>> _enrichActorFromTaskLogs(
+    List<NotificationItem> items,
+  ) async {
+    final taskIds = <String>{};
+    for (final i in items) {
+      if (!i.needsActorEnrichment) continue;
+      final tid = i.relatedTaskId;
+      if (tid != null && tid.isNotEmpty) taskIds.add(tid);
+    }
+    if (taskIds.isEmpty) return items;
+
+    final taskIdToName = <String, String>{};
+    for (final tid in taskIds) {
+      try {
+        final logs = await _taskRepository.getTaskLogs(tid);
+        if (logs.isEmpty) continue;
+        final sorted = [...logs]..sort(
+            (a, b) => (b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0)),
+          );
+        for (final log in sorted) {
+          final n = log.actorUser?.name.trim();
+          if (n != null && n.isNotEmpty) {
+            taskIdToName[tid] = n;
+            break;
+          }
+          final uid = log.actorUserId;
+          if (uid != null && uid.isNotEmpty) {
+            try {
+              final u = await _userRepository.getUserById(uid);
+              if (u != null && u.name.trim().isNotEmpty) {
+                taskIdToName[tid] = u.name.trim();
+                break;
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+    }
+    if (taskIdToName.isEmpty) return items;
+
+    return items.map((i) {
+      if (!i.needsActorEnrichment) return i;
+      final tid = i.relatedTaskId;
+      if (tid == null) return i;
+      final n = taskIdToName[tid];
+      if (n == null || n.isEmpty) return i;
+      return i.copyWithResolvedActor(n);
+    }).toList();
+  }
 
   Future<void> load({bool silent = false}) async {
     if (!silent) {
       state = state.copyWith(isLoading: true, error: null);
     }
     try {
-      final items = await _repository.getMyNotifications();
+      var items = await _repository.getMyNotifications();
+      items = await _resolveActorNames(items);
+      items = await _enrichActorFromTaskLogs(items);
       state = NotificationsState(items: items, isLoading: false);
     } catch (e) {
       state = NotificationsState(
@@ -69,5 +159,9 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
 final notificationsProvider =
     StateNotifierProvider<NotificationsNotifier, NotificationsState>((ref) {
-  return NotificationsNotifier(ref.watch(notificationRepositoryProvider));
+  return NotificationsNotifier(
+    ref.watch(notificationRepositoryProvider),
+    ref.watch(userRepositoryProvider),
+    ref.watch(taskRepositoryProvider),
+  );
 });
