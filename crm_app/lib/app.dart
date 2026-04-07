@@ -5,6 +5,7 @@ import 'core/theme/app_theme.dart';
 import 'presentation/providers/accent_color_provider.dart';
 import 'presentation/providers/amoled_provider.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'core/network/session_expiration_provider.dart';
 import 'presentation/providers/rbac_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'data/repositories/company_repository.dart';
@@ -35,6 +36,12 @@ class _CRMAppState extends ConsumerState<CRMApp> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(sessionExpirationTickProvider, (previous, next) {
+      if (previous != next) {
+        ref.read(authProvider.notifier).onSessionExpired();
+      }
+    });
+
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated) {
         ref.read(rbacProvider.notifier).load();

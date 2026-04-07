@@ -82,6 +82,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
+  /// Server rejected the Bearer token (401). Clears local session and returns to login.
+  Future<void> onSessionExpired() async {
+    await _authRepository.clearLocalSession();
+    state = const AuthState(
+      status: AuthStatus.unauthenticated,
+      error: 'Your session has expired. Please sign in again.',
+    );
+  }
+
   Future<void> deleteAccount() async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {

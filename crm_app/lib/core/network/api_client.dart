@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
+import 'session_expiration_provider.dart';
 import 'storage_service.dart';
 
 final dioProvider = Provider<Dio>((ref) {
@@ -12,10 +13,14 @@ final dioProvider = Provider<Dio>((ref) {
 class ApiClient {
   final Dio _dio;
   final StorageService _storage;
+  final void Function()? onUnauthorized;
 
-  ApiClient({required Dio dio, required StorageService storage})
-    : _dio = dio,
-      _storage = storage {
+  ApiClient({
+    required Dio dio,
+    required StorageService storage,
+    this.onUnauthorized,
+  })  : _dio = dio,
+        _storage = storage {
     _dio.options = BaseOptions(
       baseUrl: AppConstants.baseUrl,
       connectTimeout: const Duration(milliseconds: AppConstants.connectTimeout),
@@ -37,8 +42,13 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (error, handler) async {
-          if (error.response?.statusCode == 401) {
-            await _storage.clearToken();
+          if (error.response?.statusCode == 401 &&
+              _requestHadAuthorization(error.requestOptions)) {
+            await _storage.clearSession();
+            final notify = onUnauthorized;
+            if (notify != null) {
+              Future.microtask(notify);
+            }
           }
           return handler.next(error);
         },
@@ -210,6 +220,16 @@ class ApiClient {
     }
   }
 
+  static bool _requestHadAuthorization(RequestOptions options) {
+    final headers = options.headers;
+    final raw = headers['Authorization'] ?? headers['authorization'];
+    if (raw == null) return false;
+    if (raw is List) {
+      return raw.isNotEmpty && raw.first.toString().trim().isNotEmpty;
+    }
+    return raw.toString().trim().isNotEmpty;
+  }
+
   Map<String, String>? _parseFieldErrors(Map<String, dynamic> data) {
     if (data.containsKey('errors') && data['errors'] is Map) {
       final errors = data['errors'] as Map<String, dynamic>;
@@ -227,5 +247,10 @@ class ApiClient {
 final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = ref.watch(dioProvider);
   final storage = ref.watch(storageServiceProvider);
-  return ApiClient(dio: dio, storage: storage);
+  final sessionTick = ref.read(sessionExpirationTickProvider.notifier);
+  return ApiClient(
+    dio: dio,
+    storage: storage,
+    onUnauthorized: () => sessionTick.notifySessionExpired(),
+  );
 });

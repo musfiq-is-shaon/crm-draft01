@@ -84,6 +84,38 @@ List<String> _keysWithUnknown(List<String> base, String current) {
   return out;
 }
 
+/// Matches funnel status pill accents on [SaleDetailPage] (`_buildStatusButton`).
+Color _orderStatusChipAccent(ColorScheme cs, String key) {
+  switch (key) {
+    case '':
+      return cs.outline;
+    case 'pending':
+      return cs.secondary;
+    case 'completed':
+      return cs.tertiary;
+    case 'open':
+    case 'in_progress':
+    default:
+      return cs.primary;
+  }
+}
+
+/// Distinct accents for “next to do” chips (same pill shell as status).
+Color _nextToDoChipAccent(ColorScheme cs, String key) {
+  switch (key) {
+    case '':
+      return cs.outline;
+    case 'prepare_documents':
+      return cs.secondary;
+    case 'confirm_delivery':
+    case 'renewal':
+      return cs.tertiary;
+    case 'follow_up':
+    default:
+      return cs.primary;
+  }
+}
+
 class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
 
@@ -310,18 +342,88 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     return DateFormat('d MMM y').format(d);
   }
 
-  InputDecoration _fieldDecoration(BuildContext context, String? label) {
-    final o = Theme.of(context).colorScheme.outlineVariant;
+  String _formatYmd(DateTime d) {
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Outlined fields — same border treatment as [OrderFormPage] date rows.
+  InputDecoration _outlineFieldDecoration(
+    BuildContext context, {
+    String? label,
+    Widget? suffixIcon,
+  }) {
+    final b = AppThemeColors.borderColor(context);
     return InputDecoration(
       labelText: label,
       isDense: true,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      suffixIcon: suffixIcon,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: o.withValues(alpha: 0.65)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: b),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: o.withValues(alpha: 0.65)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: b),
+      ),
+    );
+  }
+
+  /// Same pill UI as [SaleDetailPage] `_buildStatusButton`.
+  Widget _workflowPill({
+    required String label,
+    required bool selected,
+    required Color accent,
+    required Color textPrimary,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    Color onAccent(Color bg) {
+      final k = bg.toARGB32();
+      if (k == cs.primary.toARGB32()) return cs.onPrimary;
+      if (k == cs.secondary.toARGB32()) return cs.onSecondary;
+      if (k == cs.tertiary.toARGB32()) return cs.onTertiary;
+      if (k == cs.outline.toARGB32()) return cs.onSurface;
+      return cs.onPrimary;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: selected ? accent : cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: selected
+              ? accent
+              : cs.outlineVariant.withValues(alpha: 0.55),
+          width: 1,
+        ),
+        boxShadow: selected
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? onAccent(accent) : textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -480,89 +582,134 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                           ),
                           const SizedBox(height: 12),
                           CRMCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  'Workflow',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                _dropdown(
-                                  context,
-                                  label: 'Status',
-                                  value: _keysWithUnknown(
-                                        _kOrderStatusKeys,
-                                        _statusKey,
-                                      ).contains(_statusKey)
-                                      ? _statusKey
-                                      : '',
-                                  keys: _keysWithUnknown(
-                                    _kOrderStatusKeys,
-                                    _statusKey,
-                                  ),
-                                  labelFor: (k) => k.isEmpty
-                                      ? _labelOrderStatus(k)
-                                      : (_kOrderStatusKeys.contains(k)
-                                          ? _labelOrderStatus(k)
-                                          : _titleCaseSnake(k)),
-                                  onChanged: (v) =>
-                                      setState(() => _statusKey = v ?? ''),
-                                ),
-                                const SizedBox(height: 12),
-                                _dropdown(
-                                  context,
-                                  label: 'Next to do',
-                                  value: _keysWithUnknown(
-                                        _kNextActionKeys,
-                                        _nextActionKey,
-                                      ).contains(_nextActionKey)
-                                      ? _nextActionKey
-                                      : '',
-                                  keys: _keysWithUnknown(
-                                    _kNextActionKeys,
-                                    _nextActionKey,
-                                  ),
-                                  labelFor: (k) => k.isEmpty
-                                      ? _labelNextAction(k)
-                                      : (_kNextActionKeys.contains(k)
-                                          ? _labelNextAction(k)
-                                          : _titleCaseSnake(k)),
-                                  onChanged: (v) =>
-                                      setState(() => _nextActionKey = v ?? ''),
-                                ),
-                                const SizedBox(height: 8),
-                                InkWell(
-                                  onTap: _pickNextActionDue,
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: InputDecorator(
-                                    decoration: _fieldDecoration(
-                                      context,
-                                      'Next to do due date',
-                                    ).copyWith(
-                                      suffixIcon: const Icon(
-                                        Icons.calendar_today_outlined,
-                                        size: 18,
+                            child: Builder(
+                              builder: (context) {
+                                final cs = Theme.of(context).colorScheme;
+                                final statusKeys = _keysWithUnknown(
+                                  _kOrderStatusKeys,
+                                  _statusKey,
+                                );
+                                final nextKeys = _keysWithUnknown(
+                                  _kNextActionKeys,
+                                  _nextActionKey,
+                                );
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      'Workflow',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Status',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: statusKeys.map((k) {
+                                        final label = k.isEmpty
+                                            ? _labelOrderStatus(k)
+                                            : (_kOrderStatusKeys.contains(k)
+                                                ? _labelOrderStatus(k)
+                                                : _titleCaseSnake(k));
+                                        final accent =
+                                            _orderStatusChipAccent(cs, k);
+                                        return _workflowPill(
+                                          label: label,
+                                          selected: _statusKey == k,
+                                          accent: accent,
+                                          textPrimary: textPrimary,
+                                          onTap: () =>
+                                              setState(() => _statusKey = k),
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'Next to do',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: nextKeys.map((k) {
+                                        final label = k.isEmpty
+                                            ? _labelNextAction(k)
+                                            : (_kNextActionKeys.contains(k)
+                                                ? _labelNextAction(k)
+                                                : _titleCaseSnake(k));
+                                        final accent =
+                                            _nextToDoChipAccent(cs, k);
+                                        return _workflowPill(
+                                          label: label,
+                                          selected: _nextActionKey == k,
+                                          accent: accent,
+                                          textPrimary: textPrimary,
+                                          onTap: () => setState(
+                                            () => _nextActionKey = k,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: _pickNextActionDue,
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: InputDecorator(
+                                          decoration:
+                                              _outlineFieldDecoration(
+                                            context,
+                                            label: 'Next to do due date',
+                                            suffixIcon: Icon(
+                                              Icons.calendar_month_rounded,
+                                              color: primary,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            _nextActionDate != null
+                                                ? _formatYmd(_nextActionDate!)
+                                                : 'Select date',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: _nextActionDate != null
+                                                  ? textPrimary
+                                                  : textSecondary,
+                                              fontWeight:
+                                                  _nextActionDate != null
+                                                      ? FontWeight.w500
+                                                      : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    child: Text(
-                                      _nextActionDate != null
-                                          ? DateFormat('dd/MM/yyyy')
-                                              .format(_nextActionDate!)
-                                          : 'dd/mm/yyyy',
-                                      style: TextStyle(
-                                        color: _nextActionDate != null
-                                            ? textPrimary
-                                            : textTertiary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                  ],
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -588,14 +735,6 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                   ),
                                   const SizedBox(height: 8),
                                 ],
-                                Text(
-                                  'Forwarded to',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
                                 Builder(
                                   builder: (context) {
                                     final fwdItems = _forwardDropdownItems(users);
@@ -604,9 +743,9 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                         ? _forwardedToId
                                         : '';
                                     return InputDecorator(
-                                      decoration: _fieldDecoration(
+                                      decoration: _outlineFieldDecoration(
                                         context,
-                                        null,
+                                        label: 'Forwarded to',
                                       ),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<String>(
@@ -684,34 +823,6 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                         ],
                       ),
                     ),
-    );
-  }
-
-  Widget _dropdown(
-    BuildContext context, {
-    required String label,
-    required String value,
-    required List<String> keys,
-    required String Function(String) labelFor,
-    required void Function(String?) onChanged,
-  }) {
-    return InputDecorator(
-      decoration: _fieldDecoration(context, label),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: value,
-          items: keys
-              .map(
-                (k) => DropdownMenuItem(
-                  value: k,
-                  child: Text(labelFor(k)),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-        ),
-      ),
     );
   }
 

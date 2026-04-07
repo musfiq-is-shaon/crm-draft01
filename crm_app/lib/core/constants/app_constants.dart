@@ -33,9 +33,9 @@ class AppConstants {
   static const String rbacMe = '/api/rbac/me';
   static const String rbacPages = '/api/rbac/pages';
 
-  /// Foreground poll for [rbacMe]. True instant updates need a server push (FCM/WebSocket);
-  /// this is the tightest practical client-only interval without hammering the API.
-  static const Duration rbacForegroundPollInterval = Duration(milliseconds: 500);
+  /// Foreground poll for [rbacMe]. Uses [RbacNotifier.load] with `silent: true` so the UI
+  /// does not flash; interval is a balance vs server push (FCM/WebSocket).
+  static const Duration rbacForegroundPollInterval = Duration(seconds: 20);
   static const String expensePurposes = '/api/expense-purposes';
   static const String notifications = '/api/notifications';
   static const String notificationsReadAll = '/api/notifications/read-all';

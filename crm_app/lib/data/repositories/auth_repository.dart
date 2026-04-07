@@ -30,6 +30,11 @@ class AuthRepository {
     return authResponse;
   }
 
+  /// Clears stored token and user without calling the logout API (e.g. expired session).
+  Future<void> clearLocalSession() async {
+    await _storage.clearSession();
+  }
+
   Future<void> logout() async {
     try {
       // Use a short timeout for logout - we don't need to wait for server response

@@ -44,20 +44,36 @@ class RbacNotifier extends StateNotifier<RbacState> {
 
   /// Single in-flight request — avoids discarding a successful response when a newer
   /// call fails first (sequence-based loads left [me] null and hid all modules).
-  Future<void> load() async {
+  ///
+  /// [silent]: no transition to `loading`, and on success does **not** notify listeners
+  /// if permissions are unchanged — avoids rebuilding [ShellPage] / [IndexedStack] every poll.
+  Future<void> load({bool silent = false}) async {
     if (_loadBusy) return;
     _loadBusy = true;
     final previousMe = state.me;
-    state = state.copyWith(status: RbacLoadStatus.loading, errorMessage: null);
+    if (!silent) {
+      state = state.copyWith(status: RbacLoadStatus.loading, errorMessage: null);
+    }
     try {
       final me = await _repository.fetchMe();
-      state = RbacState(status: RbacLoadStatus.loaded, me: me);
+      if (silent) {
+        final unchanged = previousMe != null &&
+            me.sameUiAccessAs(previousMe) &&
+            state.status == RbacLoadStatus.loaded;
+        if (!unchanged) {
+          state = RbacState(status: RbacLoadStatus.loaded, me: me);
+        }
+      } else {
+        state = RbacState(status: RbacLoadStatus.loaded, me: me);
+      }
     } catch (e) {
-      state = RbacState(
-        status: RbacLoadStatus.error,
-        me: previousMe,
-        errorMessage: e.toString(),
-      );
+      if (!silent) {
+        state = RbacState(
+          status: RbacLoadStatus.error,
+          me: previousMe,
+          errorMessage: e.toString(),
+        );
+      }
     } finally {
       _loadBusy = false;
     }

@@ -7,6 +7,7 @@ import '../../../data/repositories/renewal_repository.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
+import 'renewal_form_page.dart';
 
 class RenewalDetailPage extends ConsumerStatefulWidget {
   final String renewalId;
@@ -57,7 +58,28 @@ class _RenewalDetailPageState extends ConsumerState<RenewalDetailPage> {
 
     return Scaffold(
       backgroundColor: AppThemeColors.backgroundColor(context),
-      appBar: AppThemeColors.appBarTitle(context, 'Renewal'),
+      appBar: AppThemeColors.appBarTitle(
+        context,
+        'Renewal',
+        actions: _renewal != null
+            ? [
+                IconButton(
+                  tooltip: 'Edit renewal',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () async {
+                    final saved = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RenewalFormPage(renewal: _renewal!),
+                      ),
+                    );
+                    if (saved == true && mounted) await _load();
+                  },
+                ),
+              ]
+            : null,
+      ),
       body: _loading
           ? const LoadingWidget()
           : _error != null

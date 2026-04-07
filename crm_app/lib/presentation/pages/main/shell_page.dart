@@ -9,7 +9,12 @@ import '../../providers/attendance_provider.dart';
 import '../../providers/contact_provider.dart';
 import '../../providers/notifications_provider.dart';
 import '../../providers/rbac_prefetch.dart';
-import '../../providers/rbac_provider.dart' show rbacProvider, RbacState, RbacLoadStatus;
+import '../../providers/rbac_provider.dart'
+    show
+        rbacProvider,
+        RbacState,
+        RbacLoadStatus,
+        rbacAccessDigestProvider;
 import '../../providers/auth_provider.dart';
 import '../../providers/sale_provider.dart';
 import '../../providers/order_provider.dart';
@@ -43,18 +48,22 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
   Timer? _rbacForegroundPollTimer;
 
+  /// Avoid rebuilding [IndexedStack] children when only unrelated providers change.
+  String? _tabPagesCacheKey;
+  List<Widget>? _tabPagesCache;
+
   void _startRbacForegroundPolling() {
     _rbacForegroundPollTimer?.cancel();
     // Immediate tick so we are not idle until the first [periodic] fire.
     scheduleMicrotask(() {
       if (!mounted) return;
-      ref.read(rbacProvider.notifier).load();
+      ref.read(rbacProvider.notifier).load(silent: true);
     });
     _rbacForegroundPollTimer = Timer.periodic(
       AppConstants.rbacForegroundPollInterval,
       (_) {
         if (!mounted) return;
-        ref.read(rbacProvider.notifier).load();
+        ref.read(rbacProvider.notifier).load(silent: true);
       },
     );
   }
@@ -96,7 +105,7 @@ class _ShellPageState extends ConsumerState<ShellPage>
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
           // Permissions may change on the server while the app is backgrounded.
-          await ref.read(rbacProvider.notifier).load();
+          await ref.read(rbacProvider.notifier).load(silent: true);
           if (!mounted) return;
           final rbac = ref.read(rbacProvider);
           final ids = _tabIds(rbac);
@@ -131,8 +140,7 @@ class _ShellPageState extends ConsumerState<ShellPage>
   }
 
   List<Widget> _tabPages(List<String> ids) {
-    // Not `const` — `const` tab widgets can prevent subtree rebuilds when only RBAC changes.
-    return ids.map((id) {
+    Widget pageFor(String id) {
       switch (id) {
         case _kDashboard:
           return DashboardPage();
@@ -147,7 +155,27 @@ class _ShellPageState extends ConsumerState<ShellPage>
         default:
           return const SizedBox.shrink();
       }
-    }).toList();
+    }
+
+    return ids
+        .map(
+          (id) => KeyedSubtree(
+            key: ValueKey<String>('shell_tab_$id'),
+            child: pageFor(id),
+          ),
+        )
+        .toList();
+  }
+
+  /// Same tab order + ids → reuse widget list so [IndexedStack] does not churn.
+  List<Widget> _memoizedTabPages(List<String> ids) {
+    final key = ids.join('|');
+    if (_tabPagesCacheKey == key && _tabPagesCache != null) {
+      return _tabPagesCache!;
+    }
+    _tabPagesCacheKey = key;
+    _tabPagesCache = _tabPages(ids);
+    return _tabPagesCache!;
   }
 
   List<NavigationDestination> _destinations(List<String> ids) {
@@ -218,7 +246,7 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
     if (id == _kMore) {
       // Refetch every visit; `loadedTabs` must not skip this.
-      ref.read(rbacProvider.notifier).load();
+      ref.read(rbacProvider.notifier).load(silent: true);
       return;
     }
 
@@ -243,9 +271,14 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
   @override
   Widget build(BuildContext context) {
-    final rbacState = ref.watch(rbacProvider);
+    // Rebuild only when RBAC *permissions* change (digest) or JWT admin changes — not on
+    // every [RbacState] update (e.g. `loading`), which was flashing the whole shell.
+    ref.watch(rbacAccessDigestProvider);
+    ref.watch(authProvider.select((a) => a.user?.isAdmin ?? false));
+
+    final rbacState = ref.read(rbacProvider);
     final tabIds = _tabIds(rbacState);
-    final pages = _tabPages(tabIds);
+    final pages = _memoizedTabPages(tabIds);
     final destinations = _destinations(tabIds);
 
     ref.listen<RbacState>(rbacProvider, (previous, next) {
@@ -293,7 +326,9 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
     return Scaffold(
       backgroundColor: AppThemeColors.backgroundColor(context),
-      body: IndexedStack(index: selectedTab, children: pages),
+      body: RepaintBoundary(
+        child: IndexedStack(index: selectedTab, children: pages),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedTab,
         onDestinationSelected: (index) {
