@@ -7,6 +7,64 @@ import '../../providers/attendance_provider.dart';
 import '../../providers/attendance_reconciliation_provider.dart';
 import '../../providers/shift_provider.dart';
 
+String _teamRowDisplayName(
+  AttendanceReconciliation row,
+  List<UserShiftTiming>? timings,
+) {
+  final d = row.displayUserName.trim();
+  if (d.isNotEmpty && d != 'User') return d;
+  if (timings == null) return d.isNotEmpty ? d : 'User';
+  final uid = row.effectiveApplicantUserId;
+  for (final t in timings) {
+    if (attendanceUserIdsEqual(t.user.id, uid)) {
+      final n = t.user.name.trim();
+      if (n.isNotEmpty) return n;
+      final e = t.user.email.trim();
+      if (e.isNotEmpty) return e;
+    }
+  }
+  final em = row.user?.email.trim();
+  if (em != null && em.isNotEmpty) {
+    for (final t in timings) {
+      if (t.user.email.trim().toLowerCase() == em.toLowerCase()) {
+        final n = t.user.name.trim();
+        if (n.isNotEmpty) return n;
+        return em;
+      }
+    }
+  }
+  return d.isNotEmpty ? d : 'User';
+}
+
+String _teamRowShiftLine(
+  AttendanceReconciliation row,
+  List<WorkShift> shifts,
+  List<UserShiftTiming>? timings,
+) {
+  final uid = row.effectiveApplicantUserId.trim();
+  final em = row.user?.email.trim();
+  if (timings != null) {
+    for (final t in timings) {
+      if (uid.isNotEmpty && attendanceUserIdsEqual(t.user.id, uid)) {
+        return t.timingLine;
+      }
+    }
+    if (em != null && em.isNotEmpty) {
+      for (final t in timings) {
+        if (t.user.email.trim().toLowerCase() == em.toLowerCase()) {
+          return t.timingLine;
+        }
+      }
+    }
+  }
+  final fromLocal = WorkShift.resolveForApplicant(
+    shifts: shifts,
+    embeddedUser: row.user,
+    applicantUserId: row.effectiveApplicantUserId,
+  );
+  return fromLocal?.timingDisplayLine ?? 'No shift assigned';
+}
+
 /// Team queue tab inside [AttendanceHubPage]: pending late-reconciliation requests (JWT admin or
 /// Attendance RBAC `admin`).
 class AttendanceTeamReconciliationTab extends ConsumerStatefulWidget {
@@ -26,6 +84,7 @@ class _AttendanceTeamReconciliationTabState
       ref
           .read(attendanceReconciliationProvider.notifier)
           .loadTeamQueue(status: 'pending');
+      ref.read(userShiftTimingsProvider.future);
     });
   }
 
@@ -37,6 +96,8 @@ class _AttendanceTeamReconciliationTabState
         .loadTeamQueue(status: 'pending');
     await ref.read(attendanceProvider.notifier).loadToday();
     await ref.read(shiftProvider.notifier).loadShifts();
+    ref.invalidate(userShiftTimingsProvider);
+    await ref.read(userShiftTimingsProvider.future);
     await ref.read(attendanceWeekRollupProvider.future);
   }
 
@@ -46,6 +107,7 @@ class _AttendanceTeamReconciliationTabState
   ) async {
     final noteCtrl = TextEditingController();
     try {
+      final timings = ref.read(userShiftTimingsProvider).valueOrNull;
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) {
@@ -60,7 +122,7 @@ class _AttendanceTeamReconciliationTabState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  row.displayUserName,
+                  _teamRowDisplayName(row, timings),
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: textPrimary,
@@ -131,6 +193,7 @@ class _AttendanceTeamReconciliationTabState
   Widget build(BuildContext context) {
     final state = ref.watch(attendanceReconciliationProvider);
     final shifts = ref.watch(shiftProvider).shifts;
+    final timings = ref.watch(userShiftTimingsProvider).valueOrNull;
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
     final cs = Theme.of(context).colorScheme;
@@ -172,11 +235,6 @@ class _AttendanceTeamReconciliationTabState
                   itemCount: state.items.length,
                   itemBuilder: (context, i) {
                     final row = state.items[i];
-                    final applicantShift = WorkShift.resolveForApplicant(
-                      shifts: shifts,
-                      embeddedUser: row.user,
-                      applicantUserId: row.effectiveApplicantUserId,
-                    );
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Card(
@@ -189,7 +247,7 @@ class _AttendanceTeamReconciliationTabState
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      row.displayUserName,
+                                      _teamRowDisplayName(row, timings),
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -215,8 +273,7 @@ class _AttendanceTeamReconciliationTabState
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      applicantShift?.timingDisplayLine ??
-                                          'No shift assigned',
+                                      _teamRowShiftLine(row, shifts, timings),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,

@@ -152,7 +152,75 @@ String _reconciliationApplicantUserId(
     final s = _idStringFromDynamic(embeddedUser.id);
     if (s.isNotEmpty) return s;
   }
+  final att = json['attendance'];
+  if (att is Map) {
+    final nested = Map<String, dynamic>.from(att);
+    final inner = _reconciliationApplicantUserId(nested, null);
+    if (inner.isNotEmpty) return inner;
+    final u = nested['user'];
+    if (u is Map) {
+      final ou = User.fromJson(Map<String, dynamic>.from(u));
+      final s = _idStringFromDynamic(ou.id);
+      if (s.isNotEmpty) return s;
+    }
+  }
   return '';
+}
+
+User? _embeddedUserFromReconciliationJson(Map<String, dynamic> json) {
+  for (final key in [
+    'user',
+    'applicant',
+    'employee',
+    'member',
+    'submittedBy',
+    'submitted_by',
+    'requestedBy',
+    'requested_by',
+  ]) {
+    final v = json[key];
+    if (v is Map) {
+      final u = User.fromJson(Map<String, dynamic>.from(v));
+      if (u.id.trim().isNotEmpty ||
+          u.name.trim().isNotEmpty ||
+          u.email.trim().isNotEmpty) {
+        return u;
+      }
+    }
+  }
+  final att = json['attendance'];
+  if (att is Map) {
+    final nested = Map<String, dynamic>.from(att);
+    return _embeddedUserFromReconciliationJson(nested);
+  }
+  return null;
+}
+
+String? _reconciliationDisplayNameFromJson(
+  Map<String, dynamic> json,
+  User? embedded,
+) {
+  for (final k in [
+    'userName',
+    'user_name',
+    'applicantName',
+    'applicant_name',
+    'employeeName',
+    'employee_name',
+    'fullName',
+    'full_name',
+    'displayName',
+    'display_name',
+    'name',
+  ]) {
+    final s = json[k]?.toString().trim();
+    if (s != null && s.isNotEmpty && s != 'null') return s;
+  }
+  final n = embedded?.name.trim();
+  if (n != null && n.isNotEmpty) return n;
+  final e = embedded?.email.trim();
+  if (e != null && e.isNotEmpty) return e;
+  return null;
 }
 
 /// Parses [shiftDisplay] as `HH:mm`, `HH:mm:ss`, or `h:mm AM/PM` on [date]'s calendar day.
@@ -1051,21 +1119,16 @@ class AttendanceReconciliation {
 
   factory AttendanceReconciliation.fromJson(Map<String, dynamic> raw) {
     final json = _unwrapReconciliationJson(raw);
-    final u = json['user'];
-    User? userObj;
-    if (u is Map) {
-      userObj = User.fromJson(Map<String, dynamic>.from(u));
-    }
-    final nameFromUser = userObj?.name;
+    User? userObj = _embeddedUserFromReconciliationJson(json);
     final applicantId = _reconciliationApplicantUserId(json, userObj);
+    final resolvedName = _reconciliationDisplayNameFromJson(json, userObj);
     return AttendanceReconciliation(
       id: _idStringFromDynamic(json['id'] ?? json['_id']),
       attendanceId: _idStringFromDynamic(
         json['attendanceId'] ?? json['attendance_id'],
       ),
       userId: applicantId,
-      userName: (json['userName'] ?? json['user_name'] ?? nameFromUser)
-          ?.toString(),
+      userName: resolvedName,
       reason: (json['reason'] ?? '').toString(),
       status: (json['status'] ?? 'pending').toString().toLowerCase(),
       reviewNote: (json['reviewNote'] ?? json['review_note'])?.toString(),
@@ -1086,10 +1149,15 @@ class AttendanceReconciliation {
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
 
-  String get displayUserName =>
-      userName?.trim().isNotEmpty == true
-          ? userName!.trim()
-          : (user?.name.trim().isNotEmpty == true ? user!.name : 'User');
+  String get displayUserName {
+    final a = userName?.trim();
+    if (a != null && a.isNotEmpty) return a;
+    final b = user?.name.trim();
+    if (b != null && b.isNotEmpty) return b;
+    final c = user?.email.trim();
+    if (c != null && c.isNotEmpty) return c;
+    return 'User';
+  }
 
   /// Applicant id with fallbacks if the row only embeds [user].
   String get effectiveApplicantUserId {

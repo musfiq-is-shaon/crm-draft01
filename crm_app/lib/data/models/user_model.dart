@@ -79,9 +79,14 @@ class User {
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
+    final nameRaw = json['name'] ??
+        json['fullName'] ??
+        json['full_name'] ??
+        json['displayName'] ??
+        json['display_name'];
     return User(
       id: _idLikeToString(json['id'] ?? json['_id']) ?? '',
-      name: json['name'] ?? '',
+      name: nameRaw?.toString().trim() ?? '',
       email: json['email'] ?? '',
       phone: json['phone'],
       role: json['role'],
