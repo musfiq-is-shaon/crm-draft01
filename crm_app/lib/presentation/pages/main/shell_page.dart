@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/contact_provider.dart';
 import '../../providers/notifications_provider.dart';
@@ -31,6 +33,28 @@ final selectedTabProvider = StateProvider<int>((ref) => 0);
 /// Which shell tabs have had data loaded at least once (by tab id).
 final loadedTabsProvider = StateProvider<Set<String>>((ref) => {});
 
+/// Keeps each shell tab’s subtree alive when paged off-screen (parity with former [IndexedStack]).
+class _KeepAliveShellTab extends StatefulWidget {
+  const _KeepAliveShellTab({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAliveShellTab> createState() => _KeepAliveShellTabState();
+}
+
+class _KeepAliveShellTabState extends State<_KeepAliveShellTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
 class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
 
@@ -48,9 +72,123 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
   Timer? _rbacForegroundPollTimer;
 
-  /// Avoid rebuilding [IndexedStack] children when only unrelated providers change.
+  /// Swipe between tabs (aligned with [tabIds] order).
+  PageController? _pageController;
+  String? _pageControllerTabKey;
+
+  final GlobalKey _bottomNavBarKey = GlobalKey();
+
+  /// User is sliding along the bottom nav (show range highlight).
+  bool _navBarDragging = false;
+
+  /// Navbar preview while dragging — updates immediately; [PageView] follows on release.
+  int? _navBarPreviewIndex;
+
+  /// Avoid rebuilding shell tab children when only unrelated providers change.
   String? _tabPagesCacheKey;
   List<Widget>? _tabPagesCache;
+
+  void _disposePageController() {
+    _pageController?.dispose();
+    _pageController = null;
+    _pageControllerTabKey = null;
+  }
+
+  void _ensurePageController(List<String> tabIds, int selectedTab) {
+    final key = tabIds.join('|');
+    if (_pageControllerTabKey == key && _pageController != null) return;
+    _pageController?.dispose();
+    _pageControllerTabKey = key;
+    _pageController = PageController(
+      initialPage: selectedTab.clamp(0, tabIds.length - 1),
+    );
+  }
+
+  ScrollPhysics get _tabSwipePhysics {
+    // iOS: bouncy overscroll; Android: standard clamped paging.
+    final parent = defaultTargetPlatform == TargetPlatform.iOS
+        ? const BouncingScrollPhysics()
+        : const ClampingScrollPhysics();
+    return PageScrollPhysics(parent: parent);
+  }
+
+  /// Commits the active tab (provider + loads). Used when the [PageView] lands on a page.
+  void _commitTab(List<String> tabIds, int index) {
+    final clamped = index.clamp(0, tabIds.length - 1);
+    if (ref.read(selectedTabProvider) != clamped) {
+      ref.read(selectedTabProvider.notifier).state = clamped;
+    }
+    _loadTabData(tabIds, clamped);
+  }
+
+  /// Updates navbar preview from finger x only — does not move [PageView].
+  void _updateNavBarPreviewFromDrag(DragUpdateDetails details, int tabCount) {
+    final box = _bottomNavBarKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final local = box.globalToLocal(details.globalPosition);
+    final dx = local.dx.clamp(0.0, box.size.width);
+    final cellW = box.size.width / tabCount;
+    final i = (dx / cellW).floor().clamp(0, tabCount - 1);
+    if (_navBarPreviewIndex != i) {
+      setState(() {
+        _navBarPreviewIndex = i;
+      });
+    }
+  }
+
+  /// After releasing the nav-bar drag, jump [PageView] to [targetIndex] (same as
+  /// tap — no scrolling through pages in between). Navbar pill still settles via
+  /// [AnimatedPositioned].
+  void _jumpPageToNavPreview(int targetIndex, int tabCount) {
+    final c = _pageController;
+    if (c == null) return;
+    final target = targetIndex.clamp(0, tabCount - 1);
+    c.jumpToPage(target);
+    if (!mounted) return;
+    setState(() {
+      _navBarPreviewIndex = null;
+    });
+  }
+
+  void _switchToTab(int index, List<String> tabIds, int currentSelected) {
+    final clamped = index.clamp(0, tabIds.length - 1);
+    if (_navBarPreviewIndex != null) {
+      setState(() {
+        _navBarPreviewIndex = null;
+      });
+    }
+    final c = _pageController;
+    if (c != null && c.hasClients && c.page != null) {
+      if (c.page!.round() == clamped) return;
+    } else if (clamped == currentSelected) {
+      return;
+    }
+    // Tap: jump straight to the tab (no scrolling through pages in between).
+    // Navbar pill still animates via [AnimatedPositioned] on index change.
+    _pageController?.jumpToPage(clamped);
+  }
+
+  void _onNavBarHorizontalDragStart(
+    DragStartDetails details,
+    int tabCount,
+    int selectedTab,
+  ) {
+    final box = _bottomNavBarKey.currentContext?.findRenderObject() as RenderBox?;
+    var anchor = (_pageController?.page?.round() ?? selectedTab).clamp(
+      0,
+      tabCount - 1,
+    );
+    if (box != null && box.hasSize) {
+      final local = box.globalToLocal(details.globalPosition);
+      final dx = local.dx.clamp(0.0, box.size.width);
+      final cellW = box.size.width / tabCount;
+      anchor = (dx / cellW).floor().clamp(0, tabCount - 1);
+    }
+    setState(() {
+      _navBarDragging = true;
+      _navBarPreviewIndex = anchor;
+    });
+  }
 
   void _startRbacForegroundPolling() {
     _rbacForegroundPollTimer?.cancel();
@@ -88,6 +226,7 @@ class _ShellPageState extends ConsumerState<ShellPage>
 
   @override
   void dispose() {
+    _disposePageController();
     _stopRbacForegroundPolling();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -161,13 +300,13 @@ class _ShellPageState extends ConsumerState<ShellPage>
         .map(
           (id) => KeyedSubtree(
             key: ValueKey<String>('shell_tab_$id'),
-            child: pageFor(id),
+            child: _KeepAliveShellTab(child: pageFor(id)),
           ),
         )
         .toList();
   }
 
-  /// Same tab order + ids → reuse widget list so [IndexedStack] does not churn.
+  /// Same tab order + ids → reuse widget list so [PageView] does not churn.
   List<Widget> _memoizedTabPages(List<String> ids) {
     final key = ids.join('|');
     if (_tabPagesCacheKey == key && _tabPagesCache != null) {
@@ -178,42 +317,43 @@ class _ShellPageState extends ConsumerState<ShellPage>
     return _tabPagesCache!;
   }
 
-  List<NavigationDestination> _destinations(List<String> ids) {
+  List<_ShellNavItem> _shellNavItems(List<String> ids) {
     return ids.map((id) {
       switch (id) {
         case _kDashboard:
-          return const NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
+          return const _ShellNavItem(
+            icon: Icons.dashboard_outlined,
+            selectedIcon: Icons.dashboard,
             label: 'Dashboard',
           );
         case _kSales:
-          return const NavigationDestination(
-            icon: Icon(Icons.trending_up_outlined),
-            selectedIcon: Icon(Icons.trending_up),
+          return const _ShellNavItem(
+            icon: Icons.trending_up_outlined,
+            selectedIcon: Icons.trending_up,
             label: 'Deals',
           );
         case _kExpenses:
-          return const NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
+          return const _ShellNavItem(
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
             label: 'Expense',
           );
         case _kContacts:
-          return const NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
+          return const _ShellNavItem(
+            icon: Icons.people_outline,
+            selectedIcon: Icons.people,
             label: 'Contacts',
           );
         case _kMore:
-          return const NavigationDestination(
-            icon: Icon(Icons.menu_outlined),
-            selectedIcon: Icon(Icons.menu),
+          return const _ShellNavItem(
+            icon: Icons.menu_outlined,
+            selectedIcon: Icons.menu,
             label: 'More',
           );
         default:
-          return const NavigationDestination(
-            icon: Icon(Icons.circle_outlined),
+          return const _ShellNavItem(
+            icon: Icons.circle_outlined,
+            selectedIcon: Icons.circle_outlined,
             label: '',
           );
       }
@@ -285,7 +425,7 @@ class _ShellPageState extends ConsumerState<ShellPage>
     final rbacState = ref.read(rbacProvider);
     final tabIds = _tabIds(rbacState);
     final pages = _memoizedTabPages(tabIds);
-    final destinations = _destinations(tabIds);
+    final navItems = _shellNavItems(tabIds);
 
     ref.listen<RbacState>(rbacProvider, (previous, next) {
       final prevIds = _tabIds(previous ?? RbacState.empty);
@@ -298,6 +438,10 @@ class _ShellPageState extends ConsumerState<ShellPage>
         final cur = ref.read(selectedTabProvider);
         if (cur >= nextIds.length) {
           ref.read(selectedTabProvider.notifier).state = 0;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _pageController?.jumpToPage(0);
+          });
         }
       }
       if (next.status == RbacLoadStatus.loaded && next.me != null) {
@@ -325,23 +469,255 @@ class _ShellPageState extends ConsumerState<ShellPage>
       });
     }
 
-    ref.listen<int>(selectedTabProvider, (previous, next) {
-      final clamped = next.clamp(0, tabIds.length - 1);
-      _loadTabData(tabIds, clamped);
-    });
+    _ensurePageController(tabIds, selectedTab);
 
     return Scaffold(
       backgroundColor: AppThemeColors.backgroundColor(context),
       body: RepaintBoundary(
-        child: IndexedStack(index: selectedTab, children: pages),
+        child: PageView(
+          key: ValueKey<String>(tabIds.join('|')),
+          controller: _pageController,
+          physics: _tabSwipePhysics,
+          onPageChanged: (index) {
+            _commitTab(tabIds, index);
+          },
+          children: pages,
+        ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedTab,
-        onDestinationSelected: (index) {
-          ref.read(selectedTabProvider.notifier).state = index;
-          _loadTabData(tabIds, index);
+      bottomNavigationBar: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (details) => _onNavBarHorizontalDragStart(
+          details,
+          tabIds.length,
+          selectedTab,
+        ),
+        onHorizontalDragUpdate: (details) {
+          _updateNavBarPreviewFromDrag(details, tabIds.length);
         },
-        destinations: destinations,
+        onHorizontalDragEnd: (_) {
+          final preview = _navBarPreviewIndex?.clamp(0, tabIds.length - 1) ??
+              selectedTab.clamp(0, tabIds.length - 1);
+          setState(() {
+            _navBarDragging = false;
+          });
+          _jumpPageToNavPreview(preview, tabIds.length);
+        },
+        onHorizontalDragCancel: () {
+          setState(() {
+            _navBarDragging = false;
+            _navBarPreviewIndex = null;
+          });
+        },
+        child: AnimatedBuilder(
+          animation: _pageController!,
+          builder: (context, _) {
+            final c = _pageController!;
+            final pageIdx = c.hasClients && c.page != null
+                ? c.page!.round().clamp(0, tabIds.length - 1)
+                : selectedTab;
+            // While dragging, pill follows [_navBarPreviewIndex]; after release it
+            // matches [pageIdx] once [_jumpPageToNavPreview] clears the preview.
+            final navIdx = _navBarPreviewIndex != null
+                ? _navBarPreviewIndex!.clamp(0, tabIds.length - 1)
+                : pageIdx;
+            return _ShellNavigationBar(
+              key: _bottomNavBarKey,
+              items: navItems,
+              selectedIndex: navIdx,
+              dragging: _navBarDragging,
+              onDestinationSelected: (index) {
+                _switchToTab(index, tabIds, selectedTab);
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// One bottom-nav destination (icons + label) for [_ShellNavigationBar].
+class _ShellNavItem {
+  const _ShellNavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+}
+
+/// Material 3–style bar with an animated sliding highlight during drag.
+class _ShellNavigationBar extends StatelessWidget {
+  const _ShellNavigationBar({
+    super.key,
+    required this.items,
+    required this.selectedIndex,
+    required this.dragging,
+    required this.onDestinationSelected,
+  });
+
+  final List<_ShellNavItem> items;
+  final int selectedIndex;
+  final bool dragging;
+  final ValueChanged<int> onDestinationSelected;
+
+  static const double _pillRadius = 22;
+
+  /// Horizontal inset so the pill sits inside one cell (does not span start→end).
+  static const double _pillHorizontalInset = 5;
+
+  /// Matches [CRMCard]: tonal surface, outline, [AppElevation] shadows.
+  /// Dragging adds a light primary tint (same language as card ink / chips).
+  BoxDecoration _highlightDecoration(
+    BuildContext context, {
+    required bool isDragging,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = cs.outlineVariant.withValues(alpha: 0.65);
+    final shadows = isDark
+        ? AppElevation.cardDark(cs.primary)
+        : AppElevation.cardLight;
+    final base = cs.surfaceContainerHigh;
+    final fill = isDragging
+        ? Color.alphaBlend(
+            cs.primary.withValues(alpha: isDark ? 0.14 : 0.09),
+            base,
+          )
+        : base;
+    final border = isDragging
+        ? Border.all(
+            color: cs.primary.withValues(alpha: 0.38),
+            width: 1.25,
+          )
+        : Border.all(color: borderColor);
+
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(_pillRadius),
+      color: fill,
+      border: border,
+      boxShadow: shadows,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final navTheme = Theme.of(context).navigationBarTheme;
+    final n = items.length;
+    if (n == 0) return const SizedBox.shrink();
+
+    return Material(
+      elevation: navTheme.elevation ?? 3,
+      surfaceTintColor: cs.surfaceTint,
+      color: navTheme.backgroundColor ?? cs.surface,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 80,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final cellW = w / n;
+              final idx = selectedIndex.clamp(0, n - 1);
+              final hlLeft = idx * cellW + _pillHorizontalInset;
+              final hlWidth = cellW - 2 * _pillHorizontalInset;
+
+              // Faster while dragging (follows finger); softer settle when not.
+              final posDuration = dragging
+                  ? const Duration(milliseconds: 160)
+                  : const Duration(milliseconds: 340);
+              final decorDuration = dragging
+                  ? const Duration(milliseconds: 180)
+                  : const Duration(milliseconds: 320);
+
+              return Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  AnimatedPositioned(
+                    duration: posDuration,
+                    curve: Curves.easeOutCubic,
+                    left: hlLeft,
+                    top: 5,
+                    bottom: 5,
+                    width: hlWidth,
+                    child: AnimatedContainer(
+                      duration: decorDuration,
+                      curve: Curves.easeOutCubic,
+                      decoration: _highlightDecoration(
+                        context,
+                        isDragging: dragging,
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                  Row(
+                    children: List.generate(n, (i) {
+                      final item = items[i];
+                      final sel = i == selectedIndex;
+                      return Expanded(
+                        child: InkWell(
+                          onTap: () => onDestinationSelected(i),
+                          borderRadius: BorderRadius.circular(_pillRadius),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOutCubic,
+                              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                                    fontSize: 12,
+                                    color: sel
+                                        ? cs.onSurface
+                                        : cs.onSurfaceVariant,
+                                    fontWeight:
+                                        sel ? FontWeight.w600 : FontWeight.w500,
+                                  ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 220),
+                                    switchInCurve: Curves.easeOutCubic,
+                                    switchOutCurve: Curves.easeOutCubic,
+                                    transitionBuilder: (child, anim) {
+                                      return FadeTransition(
+                                        opacity: anim,
+                                        child: child,
+                                      );
+                                    },
+                                    child: Icon(
+                                      sel ? item.selectedIcon : item.icon,
+                                      key: ValueKey<String>('${i}_${sel}_icon'),
+                                      size: 24,
+                                      color: sel
+                                          ? cs.primary
+                                          : cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }

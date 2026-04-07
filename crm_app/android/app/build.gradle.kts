@@ -43,8 +43,8 @@ android {
         applicationId = "app.atl.crm"
         minSdk = flutter.minSdkVersion
         targetSdk = 35
-        versionCode = 23
-        versionName = "1.2"
+        versionCode = 27
+        versionName = "1.2.2"
     }
 
     buildTypes {
@@ -72,6 +72,8 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 }
 
 flutter {

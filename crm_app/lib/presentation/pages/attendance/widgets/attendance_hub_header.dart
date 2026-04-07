@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../widgets/crm_card.dart';
 import '../../../../data/models/shift_model.dart';
 import '../../../providers/attendance_provider.dart';
 import '../../../providers/shift_provider.dart';
@@ -35,266 +36,229 @@ class _AttendanceHubHeaderState extends ConsumerState<AttendanceHubHeader> {
     final weekAsync = ref.watch(attendanceWeekRollupProvider);
     final profileShiftAsync = ref.watch(userProfileShiftProvider);
     final todaySnap = WorkShift.fromAttendanceDaySnapshot(today);
-    final snapHasTimes = todaySnap != null &&
+    final snapHasTimes =
+        todaySnap != null &&
         todaySnap.startTime.trim().isNotEmpty &&
         todaySnap.endTime.trim().isNotEmpty;
     final profileW = profileShiftAsync.valueOrNull;
-    final profileHasTimes = profileW != null &&
+    final profileHasTimes =
+        profileW != null &&
         profileW.startTime.trim().isNotEmpty &&
         profileW.endTime.trim().isNotEmpty;
     // Prefer `/attendance/today` times when present; otherwise HR + `/users/me` + `GET /shifts/:id` via [userProfileShiftProvider].
     final String shiftLine = snapHasTimes
         ? todaySnap.timingDisplayLine
         : profileHasTimes
-            ? profileW.timingDisplayLine
-            : profileShiftAsync.when(
-                skipLoadingOnReload: true,
-                data: (w) => w?.timingDisplayLine ?? 'No shift assigned',
-                loading: () => 'Loading shift…',
-                error: (_, _) => 'Could not load shift',
-              );
+        ? profileW.timingDisplayLine
+        : profileShiftAsync.when(
+            skipLoadingOnReload: true,
+            data: (w) => w?.timingDisplayLine ?? 'No shift assigned',
+            loading: () => 'Loading shift…',
+            error: (_, _) => 'Could not load shift',
+          );
 
     return Padding(
       padding: AppThemeColors.pagePaddingHorizontal.copyWith(
         top: AppThemeColors.pagePaddingAll.top,
         bottom: 8,
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              colors: [
-                cs.primaryContainer.withValues(alpha: 0.45),
-                cs.tertiaryContainer.withValues(alpha: 0.35),
+      child: CRMCard(
+        borderRadius: 16,
+        padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.event_available_rounded,
+                    color: cs.onPrimaryContainer,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Attendance',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                          color: textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Overview',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: att.isLoading ? null : () => _refresh(),
+                  icon: Icon(Icons.refresh_rounded, color: cs.primary),
+                ),
               ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
             ),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.45),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.schedule_rounded, size: 18, color: cs.tertiary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your shift',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                          color: textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        shiftLine,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: cs.primary.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+            if (noShift) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Check-in and check-out are not enabled for your account. Contact HR.',
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.3,
+                  color: textSecondary,
+                ),
               ),
             ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(
+                height: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            Row(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: cs.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.event_available_rounded,
-                        color: cs.primary,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Attendance',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
-                              color: textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Overview',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              height: 1.2,
-                              color: textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: att.isLoading ? null : () => _refresh(),
-                      icon: Icon(
-                        Icons.refresh_rounded,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ],
+                Icon(Icons.insights_rounded, size: 18, color: cs.secondary),
+                const SizedBox(width: 6),
+                Text(
+                  'This week',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 18,
-                      color: cs.tertiary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your shift',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
-                              color: textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            shiftLine,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              height: 1.3,
-                              color: textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (noShift) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'Check-in and check-out are not enabled for your account. Contact HR.',
+                const Spacer(),
+                weekAsync.when(
+                  data: (r) => Text(
+                    r.total == 0 ? 'No rows yet' : '${r.total} days',
                     style: TextStyle(
-                      fontSize: 13,
-                      height: 1.3,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                       color: textSecondary,
                     ),
                   ),
-                ],
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(
-                    height: 1,
-                    color: cs.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.insights_rounded,
-                      size: 18,
+                  loading: () => SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
                       color: cs.secondary,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'This week',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: textPrimary,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const Spacer(),
-                    weekAsync.when(
-                      data: (r) => Text(
-                        r.total == 0 ? 'No rows yet' : '${r.total} days',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: textSecondary,
-                        ),
-                      ),
-                      loading: () => SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: cs.secondary,
-                        ),
-                      ),
-                      error: (e, _) => Text(
-                        '—',
-                        style: TextStyle(fontSize: 12, color: textSecondary),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                weekAsync.when(
-                  data: (r) {
-                    if (r.total == 0) {
-                      return Text(
-                        'Your week attendance will show here once recorded.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: textSecondary,
-                          height: 1.35,
-                        ),
-                      );
-                    }
-                    return Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _WeekStatChip(
-                          label: 'Attended',
-                          count: r.present,
-                          icon: Icons.check_circle_rounded,
-                          accent: const Color(0xFF2E7D32),
-                        ),
-                        _WeekStatChip(
-                          label: 'Late',
-                          count: r.late,
-                          icon: Icons.schedule_rounded,
-                          accent: const Color(0xFFE65100),
-                        ),
-                        _WeekStatChip(
-                          label: 'Absent',
-                          count: r.absent,
-                          icon: Icons.event_busy_rounded,
-                          accent: const Color(0xFFC62828),
-                        ),
-                        if (r.other > 0)
-                          _WeekStatChip(
-                            label: 'Other',
-                            count: r.other,
-                            icon: Icons.more_horiz_rounded,
-                            accent: const Color(0xFF546E7A),
-                          ),
-                      ],
-                    );
-                  },
-                  loading: () => const LinearProgressIndicator(minHeight: 3),
+                  ),
                   error: (e, _) => Text(
-                    'Could not load week summary',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: cs.error,
-                    ),
+                    '—',
+                    style: TextStyle(fontSize: 12, color: textSecondary),
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 10),
+            weekAsync.when(
+              data: (r) {
+                if (r.total == 0) {
+                  return Text(
+                    'Your week attendance will show here once recorded.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: textSecondary,
+                      height: 1.35,
+                    ),
+                  );
+                }
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _WeekStatChip(
+                      label: 'Attended',
+                      count: r.present,
+                      icon: Icons.check_circle_rounded,
+                      accent: const Color(0xFF2E7D32),
+                    ),
+                    _WeekStatChip(
+                      label: 'Late',
+                      count: r.late,
+                      icon: Icons.schedule_rounded,
+                      accent: const Color(0xFFE65100),
+                    ),
+                    _WeekStatChip(
+                      label: 'Absent',
+                      count: r.absent,
+                      icon: Icons.event_busy_rounded,
+                      accent: const Color(0xFFC62828),
+                    ),
+                    if (r.other > 0)
+                      _WeekStatChip(
+                        label: 'Other',
+                        count: r.other,
+                        icon: Icons.more_horiz_rounded,
+                        accent: const Color(0xFF546E7A),
+                      ),
+                  ],
+                );
+              },
+              loading: () => const LinearProgressIndicator(minHeight: 3),
+              error: (e, _) => Text(
+                'Could not load week summary',
+                style: TextStyle(fontSize: 13, color: cs.error),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -322,9 +286,7 @@ class _WeekStatChip extends StatelessWidget {
       accent.withValues(alpha: isDark ? 0.28 : 0.14),
       cs.surfaceContainerHighest,
     );
-    final fg = isDark
-        ? Color.lerp(accent, cs.onSurface, 0.15)!
-        : accent;
+    final fg = isDark ? Color.lerp(accent, cs.onSurface, 0.15)! : accent;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 92),

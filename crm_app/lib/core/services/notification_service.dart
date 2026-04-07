@@ -1,4 +1,12 @@
-import 'package:flutter/foundation.dart';
+import 'dart:math' show min;
+
+import 'package:flutter/foundation.dart'
+    show
+        TargetPlatform,
+        debugPrint,
+        defaultTargetPlatform,
+        kDebugMode,
+        kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -21,13 +29,26 @@ class NotificationService {
 
   bool _isInitialized = false;
 
-  /// Reserved range for “check in now” shift reminders (every 5 min until check-in / shift end).
+  /// Reserved range for shift check-in reminders (IDs per day × days ahead).
   static const int attendanceReminderIdBase = 8810000;
-  /// Max 5-minute ticks in the longest window we schedule (6h → 72 slots per day).
-  static const int attendanceReminderSlotsPerDay = 72;
+  /// Slot 0 = [earlyReminderMinutesBeforeShiftStart] before start; slot 1 = shift start;
+  /// slot 2 = [lateThresholdMinutesAfterShiftStart] after start (late threshold).
+  static const int attendanceReminderSlotsPerDay = 3;
+  /// First reminder: this many minutes **before** shift start.
+  static const int earlyReminderMinutesBeforeShiftStart = 15;
+  /// Third reminder offset from shift start (late threshold).
+  static const int lateThresholdMinutesAfterShiftStart = 15;
   /// Pre-schedule this many calendar days so alarms fire without opening the app (OS-held).
-  /// Total IDs = [attendanceReminderSlotsPerDay] × this; keep ≤ ~500 (Android 12+ alarm cap).
   static const int attendanceReminderDaysAhead = 6;
+
+  /// iOS keeps roughly **64** pending local notifications per app; we cap attendance batch size.
+  /// (Android can schedule more — see [attendanceReminderDaysAhead].)
+  static bool get _isAppleMobile =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Calendar days of shift windows to schedule (1 on iOS, [attendanceReminderDaysAhead] elsewhere).
+  static int get effectiveAttendanceDaysAhead =>
+      _isAppleMobile ? 1 : attendanceReminderDaysAhead;
 
   static int get attendanceReminderTotalIds =>
       attendanceReminderSlotsPerDay * attendanceReminderDaysAhead;
@@ -76,9 +97,10 @@ class NotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap - could navigate to task detail
-    // The payload contains the task ID
-    debugPrint('Notification tapped: ${response.payload}');
+    // Handle notification tap — payload is task id or attendance payload.
+    if (kDebugMode) {
+      debugPrint('Notification tapped: ${response.payload}');
+    }
   }
 
   Future<bool> requestPermissions() async {
@@ -94,6 +116,9 @@ class NotificationService {
     bool? granted;
     if (android != null) {
       granted = await android.requestNotificationsPermission();
+      // Required on Android 12+ for [AndroidScheduleMode.exactAllowWhileIdle] used by
+      // shift reminders; without it, zoned alarms may never fire (silent failure on some OEMs).
+      await android.requestExactAlarmsPermission();
     }
     if (iOS != null) {
       granted = await iOS.requestPermissions(
@@ -103,6 +128,23 @@ class NotificationService {
       );
     }
     return granted ?? false;
+  }
+
+  /// Android 12+ (API 31+): whether the app may use exact alarms for the shift-start
+  /// notification. Without this, the OS may batch or delay the alarm.
+  Future<bool?> canScheduleExactAlarmsAndroid() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+    final android = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    return android?.canScheduleExactNotifications();
+  }
+
+  /// Opens the system screen where the user can allow **Alarms & reminders** for this app.
+  Future<void> requestExactAlarmsAndroid() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    final android = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestExactAlarmsPermission();
   }
 
   Future<void> scheduleTaskDeadlineNotification({
@@ -126,19 +168,22 @@ class NotificationService {
     // Don't schedule if the task is already completed
     if (task.status == 'completed') return;
 
-    // Debug logging
-    debugPrint('=== Scheduling Notification ===');
-    debugPrint('Task: ${task.title}');
-    debugPrint('Due: ${task.dueDatetime}');
-    debugPrint('DaysBefore: $daysBefore');
-    debugPrint('Notification Time: $notificationTime');
-    debugPrint('Now: $now');
-    debugPrint('Is in future: ${notificationTime.isAfter(now)}');
-    debugPrint('==============================');
+    if (kDebugMode) {
+      debugPrint('=== Scheduling Notification ===');
+      debugPrint('Task: ${task.title}');
+      debugPrint('Due: ${task.dueDatetime}');
+      debugPrint('DaysBefore: $daysBefore');
+      debugPrint('Notification Time: $notificationTime');
+      debugPrint('Now: $now');
+      debugPrint('Is in future: ${notificationTime.isAfter(now)}');
+      debugPrint('==============================');
+    }
 
     // Don't schedule if the notification time has already passed
     if (notificationTime.isBefore(now)) {
-      debugPrint('Skipping - notification time has passed');
+      if (kDebugMode) {
+        debugPrint('Skipping - notification time has passed');
+      }
       return;
     }
 
@@ -193,7 +238,9 @@ class NotificationService {
       payload: task.id,
     );
 
-    debugPrint('Notification scheduled with ID: $notificationId');
+    if (kDebugMode) {
+      debugPrint('Notification scheduled with ID: $notificationId');
+    }
   }
 
   Future<void> scheduleNotificationsForTasks({
@@ -217,18 +264,30 @@ class NotificationService {
     }
   }
 
-  /// Clears all scheduled “check in” nags (IDs in [attendanceReminderIdBase] range).
+  /// Clears all scheduled shift-start check-in reminders (IDs in [attendanceReminderIdBase] range).
+  ///
+  /// Batched cancels to avoid stalling the main isolate when rescheduling.
   Future<void> cancelAttendanceCheckInReminders() async {
-    for (var i = 0; i < attendanceReminderTotalIds; i++) {
-      await _notifications.cancel(attendanceReminderIdBase + i);
+    const batch = 40;
+    for (var i = 0; i < attendanceReminderTotalIds; i += batch) {
+      final end = min(i + batch, attendanceReminderTotalIds);
+      await Future.wait(
+        List.generate(
+          end - i,
+          (j) => _notifications.cancel(attendanceReminderIdBase + i + j),
+        ),
+      );
     }
   }
 
-  /// Schedules OS-local alarms every 5 minutes from each window’s anchor until its end.
+  /// Schedules **three** OS-local notifications per shift day: **before** shift start
+  /// ([earlyReminderMinutesBeforeShiftStart]), at **shift start**, and at
+  /// **shift start + [lateThresholdMinutesAfterShiftStart]** (late threshold).
   ///
-  /// [windows] are typically **today + next days** so the next reminders are already registered
-  /// with the device — they fire when the app is **not** running, until the user checks in
-  /// (then we cancel all IDs) or the window ends.
+  /// [windows] are typically **today + next days** so upcoming times are pre-registered.
+  /// Cancels when the user checks in (see attendance reminder controller).
+  ///
+  /// **Android:** Exact alarms improve on-time delivery (see [canScheduleExactAlarmsAndroid]).
   Future<void> scheduleAttendanceCheckInReminders({
     required List<AttendanceShiftWindow> windows,
     required String shiftLabel,
@@ -239,12 +298,20 @@ class NotificationService {
     if (windows.isEmpty) return;
 
     final now = DateTime.now();
+    final androidExactOk = await canScheduleExactAlarmsAndroid();
+    if (androidExactOk == false) {
+      debugPrint(
+        'Attendance reminders: Android "Alarms & reminders" (exact alarms) is off — '
+        'reminders may be delayed or batched when the app is not running. '
+        'Enable it in system settings (Notification settings in this app).',
+      );
+    }
 
     const androidDetails = AndroidNotificationDetails(
       'attendance_shift_channel',
       'Shift check-in reminders',
       channelDescription:
-          'Reminds you to check in at shift start (repeats every 5 minutes until you check in)',
+          'Reminds you 15 min before shift, at shift start, and at the late threshold (15 min after start)',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
@@ -259,55 +326,196 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    const title = 'Time to check in';
-    final body = shiftLabel.trim().isNotEmpty
-        ? 'Your shift ($shiftLabel) has started. Open the app to check in.'
+    const titleEarly = 'Shift starting soon';
+    const titleStart = 'Time to check in';
+    const titleLate = 'Late check-in reminder';
+    final shift = shiftLabel.trim();
+    final bodyEarly = shift.isNotEmpty
+        ? 'Your shift ($shift) starts in $earlyReminderMinutesBeforeShiftStart minutes. Open the app to check in.'
+        : 'Your shift starts in $earlyReminderMinutesBeforeShiftStart minutes. Open the app to check in.';
+    final bodyStart = shift.isNotEmpty
+        ? 'Your shift ($shift) has started. Open the app to check in.'
         : 'Your shift has started. Open the app to check in.';
+    final bodyLate = shift.isNotEmpty
+        ? 'Late threshold (15 min after start). Open the app to check in — shift ($shift).'
+        : 'Late threshold (15 min after start). Open the app to check in.';
+
+    final maxDays = effectiveAttendanceDaysAhead;
+    final slotOffsetsMinutes = <int>[
+      -earlyReminderMinutesBeforeShiftStart,
+      0,
+      lateThresholdMinutesAfterShiftStart,
+    ];
 
     var dayIndex = 0;
     for (final w in windows) {
-      if (dayIndex >= attendanceReminderDaysAhead) break;
+      if (dayIndex >= maxDays) break;
 
       final anchorLocal = w.anchorLocal;
       final windowEndLocal = w.windowEndLocal;
-      final anchor =
-          anchorLocal.isAfter(now) ? anchorLocal : now;
-      final end =
-          windowEndLocal.isAfter(anchor) ? windowEndLocal : anchor;
+      final end = windowEndLocal.isAfter(anchorLocal)
+          ? windowEndLocal
+          : anchorLocal;
 
       final endTz = tz.TZDateTime.from(end, tz.local);
       final idBase =
           attendanceReminderIdBase + dayIndex * attendanceReminderSlotsPerDay;
 
-      for (var i = 0; i < attendanceReminderSlotsPerDay; i++) {
-        final fireAt = anchor.add(Duration(minutes: 5 * i));
-        if (!fireAt.isBefore(end)) break;
+      for (var s = 0; s < slotOffsetsMinutes.length; s++) {
+        final offsetMin = slotOffsetsMinutes[s];
+        final fireAt = anchorLocal.add(Duration(minutes: offsetMin));
+
+        // Short shift: skip the post-start slot if it falls after the shift window end.
+        if (fireAt.isAfter(end)) {
+          continue;
+        }
+
         if (fireAt.isBefore(now.subtract(const Duration(seconds: 1)))) {
           continue;
         }
         var scheduled = tz.TZDateTime.from(fireAt, tz.local);
         final tzNow = tz.TZDateTime.now(tz.local);
+        if (scheduled.isBefore(tzNow.subtract(const Duration(seconds: 1)))) {
+          continue;
+        }
         if (!scheduled.isAfter(tzNow)) {
           scheduled = tzNow.add(const Duration(seconds: 2));
         }
         if (!scheduled.isBefore(endTz)) {
-          break;
+          continue;
         }
 
+        final id = idBase + s;
+        final String title;
+        final String body;
+        switch (s) {
+          case 0:
+            title = titleEarly;
+            body = bodyEarly;
+            break;
+          case 1:
+            title = titleStart;
+            body = bodyStart;
+            break;
+          default:
+            title = titleLate;
+            body = bodyLate;
+        }
+
+        await _zonedScheduleAttendanceSlot(
+          id: id,
+          title: title,
+          body: body,
+          scheduled: scheduled,
+          details: details,
+        );
+      }
+      dayIndex++;
+    }
+  }
+
+  Future<void> _zonedScheduleAttendanceSlot({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduled,
+    required NotificationDetails details,
+  }) async {
+    final effectiveDetails = _shiftStartIosDetails(details);
+
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      try {
         await _notifications.zonedSchedule(
-          idBase + i,
+          id,
           title,
           body,
           scheduled,
-          details,
+          effectiveDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
           payload: 'attendance_check_in',
         );
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Attendance zonedSchedule failed id=$id ($e)');
+        }
       }
-      dayIndex++;
+      return;
     }
+
+    // Prefer alarm-clock scheduling first — highest OS priority when exact-alarm allowed.
+    try {
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        effectiveDetails,
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'attendance_check_in',
+      );
+      return;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'Attendance shift-start alarmClock failed id=$id ($e), retrying exactAllowWhileIdle',
+        );
+      }
+    }
+    try {
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        effectiveDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'attendance_check_in',
+      );
+      return;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'Attendance shift-start exactAllowWhileIdle failed id=$id ($e), retrying inexactAllowWhileIdle',
+        );
+      }
+    }
+    try {
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        effectiveDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'attendance_check_in',
+      );
+    } catch (e2) {
+      if (kDebugMode) {
+        debugPrint('Attendance zonedSchedule inexact failed id=$id ($e2)');
+      }
+    }
+  }
+
+  /// iOS: time-sensitive so Focus / summary is less likely to defer shift start.
+  NotificationDetails _shiftStartIosDetails(NotificationDetails base) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return base;
+    return NotificationDetails(
+      android: base.android,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      ),
+    );
   }
 
   Future<void> cancelNotification(int id) async {

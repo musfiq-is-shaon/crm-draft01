@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/services/attendance_reminder_controller.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
-import 'data/models/shift_model.dart';
 import 'presentation/providers/accent_color_provider.dart';
 import 'presentation/providers/amoled_provider.dart';
 import 'presentation/providers/attendance_provider.dart';
@@ -67,24 +66,53 @@ class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
       if (next.status == AuthStatus.authenticated) {
         ref.read(rbacProvider.notifier).load();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          unawaited(scheduleAttendanceReminders(ref.read));
+          // Defer + short debounce so Shell/RBAC/dashboard network work is not competing
+          // with local notification scheduling on the same frame as navigation.
+          queueScheduleAttendanceReminders(
+            ref.read,
+            debounce: const Duration(milliseconds: 200),
+          );
         });
       } else if (next.status == AuthStatus.unauthenticated) {
+        ref.read(attendanceProvider.notifier).resetForLogout();
         ref.read(rbacProvider.notifier).clear();
         ref.read(selectedTabProvider.notifier).state = 0;
         ref.read(loadedTabsProvider.notifier).state = {};
         ref.read(companyRepositoryProvider).clearCache();
         ref.read(userRepositoryProvider).clearCache();
-        unawaited(NotificationService().cancelAttendanceCheckInReminders());
+        unawaited(
+          Future(() => NotificationService().cancelAttendanceCheckInReminders()),
+        );
       }
     });
 
-    ref.listen<AttendanceState>(attendanceProvider, (previous, next) {
-      unawaited(scheduleAttendanceReminders(ref.read));
-    });
-    ref.listen<AsyncValue<WorkShift?>>(userProfileShiftProvider, (previous, next) {
-      unawaited(scheduleAttendanceReminders(ref.read));
-    });
+    // Narrow triggers + debounced reschedule — full [AttendanceState] updates were
+    // firing on loading/records and rescheduling local notifications too often.
+    ref.listen<String>(
+      attendanceProvider.select((s) {
+        final t = s.todayAttendance;
+        if (t == null) return 'null';
+        return '${t.date}|${t.checkInTime?.millisecondsSinceEpoch}|'
+            '${t.hasNoShift}|${t.safeStatus}|${t.shiftStartTime}|'
+            '${t.shiftEndTime}|${t.assignedShiftId}|${t.shiftName}';
+      }),
+      (previous, next) {
+        queueScheduleAttendanceReminders(ref.read);
+      },
+    );
+    ref.listen<String>(
+      userProfileShiftProvider.select((async) {
+        final w = async.valueOrNull;
+        if (w == null) {
+          return 'loading:${async.isLoading}|${async.hasError}';
+        }
+        return '${w.startTime}|${w.endTime}|${w.weekendDays}';
+      }),
+      (previous, next) {
+        if (previous == next) return;
+        queueScheduleAttendanceReminders(ref.read);
+      },
+    );
 
     final authState = ref.watch(authProvider);
     final themeMode = ref.watch(themeProvider);
@@ -103,8 +131,11 @@ class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
             amoledBlack: amoledBlack,
           ),
           themeMode: themeMode,
-          // Instant swap: AnimatedTheme lerp across the whole tree feels laggy on toggle.
-          themeAnimationStyle: AnimationStyle.noAnimation,
+          // Short lerp: full-tree AnimatedTheme can feel heavy; keep duration small.
+          themeAnimationStyle: AnimationStyle(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+          ),
           home:
               authState.status == AuthStatus.initial ||
                   authState.status == AuthStatus.loading

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart'
-    show debugPrint, defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -141,7 +141,9 @@ class LocationService {
         placeLabel: placeLabel,
       );
     } catch (e) {
-      debugPrint('Location error: $e');
+      if (kDebugMode) {
+        debugPrint('Location error: $e');
+      }
       return null;
     }
   }

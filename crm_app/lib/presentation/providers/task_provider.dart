@@ -1,5 +1,3 @@
-import 'dart:async' show unawaited;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/attendance_reminder_controller.dart';
@@ -270,11 +268,6 @@ class TasksNotifier extends StateNotifier<TasksState> {
       final notificationSettings = await storageService
           .getNotificationSettings();
 
-      // Debug logging
-      debugPrint('=== NOTIFICATION DEBUG ===');
-      debugPrint('Settings from storage: $notificationSettings');
-      debugPrint('Total tasks: ${tasks.length}');
-
       // Default to enabled with 1 day before if not set
       final daysBefore = notificationSettings?['daysBefore'] is int
           ? notificationSettings!['daysBefore'] as int
@@ -283,7 +276,12 @@ class TasksNotifier extends StateNotifier<TasksState> {
           ? notificationSettings!['enabled'] as bool
           : true;
 
-      debugPrint('Enabled: $isEnabled, Days before: $daysBefore');
+      if (kDebugMode) {
+        debugPrint('=== NOTIFICATION DEBUG ===');
+        debugPrint('Settings from storage: $notificationSettings');
+        debugPrint('Total tasks: ${tasks.length}');
+        debugPrint('Enabled: $isEnabled, Days before: $daysBefore');
+      }
 
       if (isEnabled) {
         final now = DateTime.now();
@@ -291,50 +289,70 @@ class TasksNotifier extends StateNotifier<TasksState> {
         // Filter tasks that are not completed and have upcoming deadlines
         final pendingTasks = tasks.where((task) {
           if (task.status == 'completed') {
-            debugPrint('Task "${task.title}" skipped - completed');
+            if (kDebugMode) {
+              debugPrint('Task "${task.title}" skipped - completed');
+            }
             return false;
           }
           if (task.dueDatetime == null) {
-            debugPrint('Task "${task.title}" skipped - no due date');
+            if (kDebugMode) {
+              debugPrint('Task "${task.title}" skipped - no due date');
+            }
             return false;
           }
 
           final daysUntilDue = task.dueDatetime!.difference(now).inDays;
           final hoursUntilDue = task.dueDatetime!.difference(now).inHours;
 
-          debugPrint(
-            'Task "${task.title}": due=${task.dueDatetime}, daysUntilDue=$daysUntilDue, hoursUntilDue=$hoursUntilDue',
-          );
+          if (kDebugMode) {
+            debugPrint(
+              'Task "${task.title}": due=${task.dueDatetime}, daysUntilDue=$daysUntilDue, hoursUntilDue=$hoursUntilDue',
+            );
+          }
 
           // Include tasks that are due:
           // - Within the notification window (daysBefore)
           // - Or overdue by up to 1 day
           final shouldNotify = daysUntilDue <= daysBefore && daysUntilDue >= -1;
-          debugPrint(
-            '  -> Should notify: $shouldNotify (condition: $daysUntilDue <= $daysBefore && $daysUntilDue >= -1)',
-          );
+          if (kDebugMode) {
+            debugPrint(
+              '  -> Should notify: $shouldNotify (condition: $daysUntilDue <= $daysBefore && $daysUntilDue >= -1)',
+            );
+          }
 
           return shouldNotify;
         }).toList();
 
-        debugPrint('Pending tasks for notification: ${pendingTasks.length}');
+        if (kDebugMode) {
+          debugPrint('Pending tasks for notification: ${pendingTasks.length}');
+        }
 
         if (pendingTasks.isNotEmpty) {
           await notificationService.scheduleNotificationsForTasks(
             tasks: pendingTasks,
             daysBefore: daysBefore,
           );
-          debugPrint('Notifications scheduled successfully');
+          if (kDebugMode) {
+            debugPrint('Notifications scheduled successfully');
+          }
         } else {
-          debugPrint('No pending tasks to notify');
+          if (kDebugMode) {
+            debugPrint('No pending tasks to notify');
+          }
         }
       } else {
-        debugPrint('Notifications disabled');
+        if (kDebugMode) {
+          debugPrint('Notifications disabled');
+        }
       }
-      debugPrint('=========================');
-      unawaited(scheduleAttendanceRemindersFromRef(_ref));
+      if (kDebugMode) {
+        debugPrint('=========================');
+      }
+      queueScheduleAttendanceRemindersFromRef(_ref);
     } catch (e) {
-      debugPrint('Error scheduling notifications: $e');
+      if (kDebugMode) {
+        debugPrint('Error scheduling notifications: $e');
+      }
     }
   }
 

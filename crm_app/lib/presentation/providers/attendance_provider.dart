@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/location_service.dart';
@@ -7,9 +8,19 @@ import '../../core/services/notification_service.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../providers/auth_provider.dart';
+import 'leave_provider.dart';
 
 /// Sentinel so [AttendanceState.copyWith] can distinguish "omit" from explicit null.
 enum _LocalField { unset }
+
+/// Matches [attendance_reminder_controller._alreadyCheckedInToday] — any successful check-in
+/// (including before shift start) should clear shift nags.
+bool _todayAttendanceIndicatesCheckedIn(TodayAttendance? t) {
+  if (t == null) return false;
+  if (t.checkInTime != null) return true;
+  final s = t.safeStatus.toLowerCase().trim();
+  return s == 'checked_in' || s == 'completed' || s == 'checked_out';
+}
 
 class AttendanceState {
   final TodayAttendance? todayAttendance;
@@ -143,10 +154,20 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
         localCheckInLocation: mergedLocalIn,
         localCheckOutLocation: mergedLocalOut,
       );
+      ref.invalidate(myLeavesForAttendanceProvider);
     } catch (e) {
-      debugPrint('❌ Attendance load error: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Attendance load error: $e');
+      }
       state = state.copyWith(isLoading: false, error: e.toString());
     }
+  }
+
+  /// Clears in-memory attendance when the session ends so the next user never sees stale rows
+  /// and reminder scheduling does not churn on old [todayAttendance] keys.
+  void resetForLogout() {
+    _lastLoadedUserId = null;
+    state = const AttendanceState();
   }
 
   /// Manual refresh trigger
@@ -187,9 +208,11 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       return;
     }
     try {
-      debugPrint(
-        '🟢 Check-in API call: userId=$currentUserId location=$coordinatesPayload',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '🟢 Check-in API call: userId=$currentUserId location=$coordinatesPayload',
+        );
+      }
       final checkInBody = await _repository.checkIn(coordinatesPayload);
       final label = placeLabel.trim();
       final idHint = extractAttendanceRowIdFromApiResponse(checkInBody);
@@ -206,25 +229,40 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
           quick = quick.withAttendanceRowId(idHint);
         }
       } catch (e, st) {
-        debugPrint('⚠️ Immediate merge after check-in: $e\n$st');
+        if (kDebugMode) {
+          debugPrint('⚠️ Immediate merge after check-in: $e\n$st');
+        }
+      }
+      TodayAttendance? postRow;
+      try {
+        postRow = TodayAttendance.fromJson(checkInBody);
+      } catch (_) {
+        postRow = null;
       }
       state = state.copyWith(
         localCheckInLocation: label.isNotEmpty ? label : null,
         todayAttendance: quick ?? state.todayAttendance,
       );
-      if (quick?.checkInTime != null) {
+      // [mergeLateHintsFromCheckIn] returns early when not late — merged [quick] may omit
+      // [checkInTime] even though POST succeeded; also trust raw POST for cancel.
+      if (_todayAttendanceIndicatesCheckedIn(quick) ||
+          _todayAttendanceIndicatesCheckedIn(postRow)) {
         unawaited(NotificationService().cancelAttendanceCheckInReminders());
       }
 
-      debugPrint('🔄 Scheduling GET /today after check-in (non-blocking)...');
+      if (kDebugMode) {
+        debugPrint('🔄 Scheduling GET /today after check-in (non-blocking)...');
+      }
       // Next frame: let late-reconciliation dialog open first; avoid racing [loadToday].
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_refreshTodayAfterCheckIn(checkInBody, idHint));
       });
-      debugPrint(
-        '✅ Check-in POST applied, late=${state.todayAttendance?.isLate} '
-        'mins=${state.todayAttendance?.lateMinutes} status=${state.todayAttendance?.status}',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '✅ Check-in POST applied, late=${state.todayAttendance?.isLate} '
+          'mins=${state.todayAttendance?.lateMinutes} status=${state.todayAttendance?.status}',
+        );
+      }
     } catch (e) {
       String errorMsg = 'Something went wrong. Please try again.';
       if (e.toString().contains('Already checked in')) {
@@ -249,34 +287,74 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       return;
     }
     try {
-      debugPrint(
-        '🔴 Check-out API call: userId=$currentUserId location=$coordinatesPayload',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '🔴 Check-out API call: userId=$currentUserId location=$coordinatesPayload',
+        );
+      }
       final checkOutBody = await _repository.checkOut(coordinatesPayload);
       final label = placeLabel.trim();
+      final outIdHint = extractAttendanceRowIdFromApiResponse(checkOutBody);
+
+      TodayAttendance? quick;
+      try {
+        final prev = state.todayAttendance;
+        final base = prev ?? TodayAttendance.fromJson(checkOutBody);
+        var merged = base.mergeHintsFromCheckOut(checkOutBody);
+        if (merged.checkOutTime != null || merged.isAttendanceFlowCompleted) {
+          if (outIdHint != null &&
+              outIdHint.isNotEmpty &&
+              (merged.id == null || merged.id!.trim().isEmpty)) {
+            merged = merged.withAttendanceRowId(outIdHint);
+          }
+          quick = merged;
+        }
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('⚠️ Immediate merge after check-out: $e\n$st');
+        }
+      }
+
       state = state.copyWith(
         localCheckOutLocation: label.isNotEmpty ? label : null,
+        todayAttendance: quick ?? state.todayAttendance,
       );
-      debugPrint('🔄 Reloading after check-out...');
-      final outIdHint = extractAttendanceRowIdFromApiResponse(checkOutBody);
-      // Multiple refreshes to ensure backend sync
-      await Future.delayed(const Duration(seconds: 1));
-      await loadToday();
-      await Future.delayed(const Duration(seconds: 1));
-      await loadToday();
+
+      final done = state.todayAttendance?.isAttendanceFlowCompleted ?? false;
+      if (done) {
+        unawaited(NotificationService().cancelAttendanceCheckInReminders());
+      }
+
+      if (kDebugMode) {
+        debugPrint('🔄 Reloading after check-out (single refresh)...');
+      }
+      // Brief delay so GET /today can converge; one load beats two 1s waits + double fetch.
+      await Future.delayed(const Duration(milliseconds: 450));
+      await loadToday(showLoadingIndicator: false);
+
       var tOut = state.todayAttendance;
       if (outIdHint != null &&
           outIdHint.isNotEmpty &&
           tOut != null &&
           (tOut.id == null || tOut.id!.trim().isEmpty)) {
-        state = state.copyWith(
-          todayAttendance: tOut.withAttendanceRowId(outIdHint),
+        tOut = tOut.withAttendanceRowId(outIdHint);
+      }
+      // Stale GET: restore checkout fields from POST when the server row still lags.
+      if (tOut != null) {
+        final recovered = tOut.mergeHintsFromCheckOut(checkOutBody);
+        if (recovered.checkOutTime != null && tOut.checkOutTime == null) {
+          tOut = recovered;
+        } else if (recovered.isAttendanceFlowCompleted &&
+            !tOut.isAttendanceFlowCompleted) {
+          tOut = recovered;
+        }
+        state = state.copyWith(todayAttendance: tOut);
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '✅ Check-out complete, state: ${state.todayAttendance?.safeStatus}',
         );
       }
-      state = state.copyWith();
-      debugPrint(
-        '✅ Check-out complete, state: ${state.todayAttendance?.safeStatus}',
-      );
     } catch (e) {
       String errorMsg = 'Something went wrong. Please try again.';
       if (e.toString().contains('Already checked out')) {
@@ -311,12 +389,16 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
         }
         state = state.copyWith(todayAttendance: t);
       }
-      debugPrint(
-        '✅ GET /today after check-in: late=${state.todayAttendance?.isLate} '
-        'mins=${state.todayAttendance?.lateMinutes}',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '✅ GET /today after check-in: late=${state.todayAttendance?.isLate} '
+          'mins=${state.todayAttendance?.lateMinutes}',
+        );
+      }
     } catch (e, st) {
-      debugPrint('⚠️ Refresh after check-in: $e\n$st');
+      if (kDebugMode) {
+        debugPrint('⚠️ Refresh after check-in: $e\n$st');
+      }
     }
   }
 }

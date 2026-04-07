@@ -15,7 +15,6 @@ import '../../widgets/loading_widget.dart';
 import '../../widgets/status_badge.dart';
 import 'order_detail_page.dart';
 import 'order_form_page.dart';
-import 'renewal_detail_page.dart';
 import 'renewal_form_page.dart';
 import 'sale_detail_page.dart';
 import 'sales_funnel_tab.dart';
@@ -175,12 +174,12 @@ class _DealsPageState extends ConsumerState<DealsPage>
                   },
                   onRefresh: () =>
                       ref.read(renewalsProvider.notifier).loadRenewals(),
-                  onOpenDetail: (id) {
+                  onOpenRenewal: (renewal) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            RenewalDetailPage(renewalId: id),
+                            RenewalFormPage(renewal: renewal),
                       ),
                     ).then((_) {
                       ref.read(renewalsProvider.notifier).loadRenewals();
@@ -382,7 +381,7 @@ class _RenewalsPane extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onSearchClear;
   final Future<void> Function() onRefresh;
-  final void Function(String id) onOpenDetail;
+  final void Function(Renewal renewal) onOpenRenewal;
 
   const _RenewalsPane({
     required this.renewalsState,
@@ -390,7 +389,7 @@ class _RenewalsPane extends StatelessWidget {
     required this.onSearchChanged,
     required this.onSearchClear,
     required this.onRefresh,
-    required this.onOpenDetail,
+    required this.onOpenRenewal,
   });
 
   @override
@@ -476,7 +475,7 @@ class _RenewalsPane extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: CRMCard(
-              onTap: () => onOpenDetail(r.id),
+              onTap: () => onOpenRenewal(r),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -4,6 +4,14 @@ import '../../data/repositories/leave_repository.dart';
 import 'auth_provider.dart';
 import 'rbac_provider.dart';
 
+/// GET `/api/leaves/my` for dashboard attendance + shift check-in reminder filtering.
+final myLeavesForAttendanceProvider =
+    FutureProvider<List<LeaveEntry>>((ref) async {
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null || uid.isEmpty) return const [];
+  return ref.read(leaveRepositoryProvider).getMyLeaves();
+});
+
 enum LeaveListScope { mine, team, all }
 
 /// Optional filters for `GET /api/leaves/all` (admin).
@@ -241,6 +249,7 @@ class LeaveNotifier extends StateNotifier<LeaveState> {
       attachmentData: attachmentData,
     );
     await loadLeaves();
+    ref.invalidate(myLeavesForAttendanceProvider);
   }
 
   Future<void> updateLeave({
@@ -270,16 +279,19 @@ class LeaveNotifier extends StateNotifier<LeaveState> {
       attachmentData: attachmentData,
     );
     await loadLeaves();
+    ref.invalidate(myLeavesForAttendanceProvider);
   }
 
   Future<void> approveLeave(String leaveId) async {
     await _repository.approveLeave(leaveId);
     await loadLeaves();
+    ref.invalidate(myLeavesForAttendanceProvider);
   }
 
   Future<void> rejectLeave(String leaveId, String reason) async {
     await _repository.rejectLeave(leaveId, reason);
     await loadLeaves();
+    ref.invalidate(myLeavesForAttendanceProvider);
   }
 
   void clearError() {

@@ -56,10 +56,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ];
     if (me != null) {
       futures.add(prefetchCrmLookupData(ref, me));
-      if (me.hasNav(RbacPageKey.sales)) {
+      if (me.hasModuleAccess(RbacPageKey.sales)) {
         futures.add(ref.read(salesProvider.notifier).loadSales());
       }
-      if (me.hasNav(RbacPageKey.tasks)) {
+      if (me.hasModuleAccess(RbacPageKey.tasks)) {
         futures.add(ref.read(tasksProvider.notifier).loadTasks());
       }
       if (me.canNavContacts) {
@@ -83,17 +83,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ref.watch(rbacAccessDigestProvider);
     final adminQuickLayout =
         ref.watch(dashboardQuickActionsAdminLayoutProvider);
+    // Icons/labels: admin layout uses "lead" wording; default uses "deal".
+    final salesIcon =
+        adminQuickLayout ? Icons.person_add_outlined : Icons.trending_up_outlined;
+    final salesLabel = adminQuickLayout ? 'Add Lead' : 'Add Deal';
     final tasksModuleAdmin =
         ref.watch(rbacModuleAdminProvider(RbacPageKey.tasks));
-    final canSales = me?.hasNav(RbacPageKey.sales) ?? false;
-    final canTasks = me?.hasNav(RbacPageKey.tasks) ?? false;
-    final canExpenses = me?.hasNav(RbacPageKey.expenses) ?? false;
+    // Prefer [hasModuleAccess] so Quick Actions match `effective` RBAC even when
+    // `navPageKeys` omits a key the backend still grants (see [RbacMe.hasModuleAccess]).
+    final canSales = me?.hasModuleAccess(RbacPageKey.sales) ?? false;
+    final canTasks = me?.hasModuleAccess(RbacPageKey.tasks) ?? false;
+    final canExpenses = me?.hasModuleAccess(RbacPageKey.expenses) ?? false;
     final canAttendance =
         me != null &&
         (me.hasNav(RbacPageKey.attendance) || me.hasNav(RbacPageKey.hr));
-    final hasAnyQuickAction = adminQuickLayout
-        ? (canSales || canTasks)
-        : (canSales || canExpenses || canTasks);
+    // Same visibility rule for admin vs default layout: any permitted module
+    // (sales / expenses / tasks). Admin layout previously omitted expenses, so
+    // expense-only RBAC users saw no Quick Actions at all.
+    final hasAnyQuickAction =
+        canSales || canExpenses || canTasks;
 
     final userFilteredTasks = ref.watch(userFilteredTasksProvider);
     final userPendingTasksSorted = ref.watch(userPendingTasksSortedProvider);
@@ -240,118 +248,67 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             color: textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        if (!adminQuickLayout)
-                          Row(
-                            children: [
-                              if (canSales) ...[
-                                Expanded(
-                                  child: _QuickActionButton(
-                                    icon: Icons.trending_up_outlined,
-                                    label: 'Add Deal',
-                                    color: primary,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SaleFormPage(),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                if (canExpenses || canTasks)
-                                  const SizedBox(width: 12),
-                              ],
-                              if (canExpenses) ...[
-                                Expanded(
-                                  child: _QuickActionButton(
-                                    icon: Icons.receipt_outlined,
-                                    label: 'Add Expense',
-                                    color: cs.secondary,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const ExpenseFormPage(),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                if (canTasks) const SizedBox(width: 12),
-                              ],
-                              if (canTasks)
-                                Expanded(
-                                  child: _QuickActionButton(
-                                    icon: Icons.checklist_outlined,
-                                    label: 'Tasks',
-                                    color: cs.tertiary,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const TasksListPage(),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                            ],
-                          )
-                        else
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (canSales)
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _QuickActionButton(
-                                        icon: Icons.person_add_outlined,
-                                        label: 'Add Lead',
-                                        color: primary,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const SaleFormPage(),
-                                            ),
-                                          );
-                                        },
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            if (canSales) ...[
+                              Expanded(
+                                child: _QuickActionButton(
+                                  icon: salesIcon,
+                                  label: salesLabel,
+                                  color: primary,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SaleFormPage(),
                                       ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
-                              if (canSales && canTasks)
-                                const SizedBox(height: 12),
-                              if (canTasks)
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _QuickActionButton(
-                                        icon: Icons.checklist_outlined,
-                                        label: 'Tasks',
-                                        color: primary,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const TasksListPage(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              ),
+                              if (canExpenses || canTasks)
+                                const SizedBox(width: 12),
                             ],
-                          ),
+                            if (canExpenses) ...[
+                              Expanded(
+                                child: _QuickActionButton(
+                                  icon: Icons.receipt_outlined,
+                                  label: 'Add Expense',
+                                  color: cs.secondary,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const ExpenseFormPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              if (canTasks) const SizedBox(width: 12),
+                            ],
+                            if (canTasks)
+                              Expanded(
+                                child: _QuickActionButton(
+                                  icon: Icons.checklist_outlined,
+                                  label: 'Tasks',
+                                  color: cs.tertiary,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const TasksListPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -715,27 +672,30 @@ class _QuickActionButton extends StatelessWidget {
     final tonal = AppThemeColors.tonalForAccent(context, color);
     return Material(
       color: tonal.background,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         splashColor: tonal.foreground.withValues(alpha: 0.12),
         highlightColor: tonal.foreground.withValues(alpha: 0.06),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: tonal.foreground, size: 24),
-              const SizedBox(height: 8),
+              Icon(icon, color: tonal.foreground, size: 28),
+              const SizedBox(height: 10),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
+                  height: 1.25,
                   color: tonal.foreground,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

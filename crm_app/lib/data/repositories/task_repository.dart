@@ -61,10 +61,11 @@ class TaskRepository {
       'actorUserId': actorUserId,
     };
 
-    // Debug: Print the actual data being sent
-    debugPrint('=== API REQUEST: CREATE TASK ===');
-    debugPrint('Data: $data');
-    debugPrint('=================================');
+    if (kDebugMode) {
+      debugPrint('=== API REQUEST: CREATE TASK ===');
+      debugPrint('Data: $data');
+      debugPrint('=================================');
+    }
 
     final response = await _apiClient.post(AppConstants.tasks, data: data);
     return Task.fromJson(response.data);

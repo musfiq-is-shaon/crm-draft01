@@ -298,6 +298,31 @@ class TodayAttendance {
   /// Shift template id from `/attendance/today` when embedded shift or `shiftId` is sent.
   final String? assignedShiftId;
 
+  /// When GET `/attendance/today` has not completed yet, shift-based reminders still need
+  /// a minimal row so local notifications can be registered before the API returns.
+  factory TodayAttendance.schedulingFallback({
+    required String userId,
+    required String shiftStartTime,
+    String? shiftEndTime,
+    String? shiftName,
+    String? assignedShiftId,
+  }) {
+    final n = DateTime.now();
+    final ds =
+        '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+    return TodayAttendance(
+      userId: userId,
+      status: 'pending',
+      date: ds,
+      isLate: false,
+      hasShiftAssigned: true,
+      shiftStartTime: shiftStartTime,
+      shiftEndTime: shiftEndTime,
+      shiftName: shiftName,
+      assignedShiftId: assignedShiftId,
+    );
+  }
+
   TodayAttendance({
     this.id,
     required this.userId,
@@ -533,6 +558,44 @@ class TodayAttendance {
       checkOutTime: checkOutTime ?? post.checkOutTime,
       isLate: true,
       lateMinutes: finalMins,
+      totalHours: totalHours ?? post.totalHours,
+      locationIn: locationIn ?? post.locationIn,
+      locationOut: locationOut ?? post.locationOut,
+      hasShiftAssigned: hasShiftAssigned ?? post.hasShiftAssigned,
+      isWeekend: isWeekend ?? post.isWeekend,
+      isHoliday: isHoliday ?? post.isHoliday,
+      shiftName: shiftName ?? post.shiftName,
+      shiftStartTime: shiftStartTime ?? post.shiftStartTime,
+      shiftEndTime: shiftEndTime ?? post.shiftEndTime,
+      shiftGraceMinutes: shiftGraceMinutes ?? post.shiftGraceMinutes,
+      assignedShiftId: assignedShiftId ?? post.assignedShiftId,
+    );
+  }
+
+  /// GET /today may lag after POST /check-out; merge POST body so the card shows checked out immediately.
+  TodayAttendance mergeHintsFromCheckOut(dynamic checkOutBody) {
+    TodayAttendance post;
+    try {
+      post = TodayAttendance.fromJson(checkOutBody);
+    } catch (_) {
+      return this;
+    }
+    final hasCheckoutSignal =
+        post.checkOutTime != null ||
+        post.isCheckedOut ||
+        post.isAttendanceFlowCompleted;
+    if (!hasCheckoutSignal) {
+      return this;
+    }
+    return TodayAttendance(
+      id: (id != null && id!.trim().isNotEmpty) ? id : post.id,
+      userId: userId.isNotEmpty ? userId : post.userId,
+      status: post.status.isNotEmpty ? post.status : status,
+      date: date.isNotEmpty ? date : post.date,
+      checkInTime: checkInTime ?? post.checkInTime,
+      checkOutTime: checkOutTime ?? post.checkOutTime,
+      isLate: isLate || post.isLate,
+      lateMinutes: lateMinutes ?? post.lateMinutes,
       totalHours: totalHours ?? post.totalHours,
       locationIn: locationIn ?? post.locationIn,
       locationOut: locationOut ?? post.locationOut,

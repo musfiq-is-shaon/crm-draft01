@@ -669,3 +669,45 @@ Map<String, dynamic> _unwrapLeaveJson(Map<String, dynamic> raw) {
   }
   return raw;
 }
+
+// --- Calendar helpers for attendance UI + shift reminder scheduling ---
+
+DateTime leaveCalendarDateOnly(DateTime d) =>
+    DateTime(d.year, d.month, d.day);
+
+/// True when HR has approved this request and the employee should not be
+/// expected at work (shift check-in nags, dashboard "at work" flow).
+bool leaveStatusExemptsFromWorkAttendance(String status) {
+  final s = status.trim().toLowerCase();
+  return s == 'approved' ||
+      s == 'accept' ||
+      s == 'accepted' ||
+      s == 'granted' ||
+      s == 'confirmed';
+}
+
+/// Whether [calendarDay] (date-only) falls inside this leave's inclusive range
+/// and the leave counts as approved time off.
+bool leaveEntryCoversCalendarDay(LeaveEntry e, DateTime calendarDay) {
+  if (!leaveStatusExemptsFromWorkAttendance(e.status)) return false;
+  final s = e.startDate;
+  final en = e.endDate ?? e.startDate;
+  if (s == null || en == null) return false;
+  final a = leaveCalendarDateOnly(s);
+  final b = leaveCalendarDateOnly(en);
+  final start = a.isBefore(b) ? a : b;
+  final end = a.isBefore(b) ? b : a;
+  final d = leaveCalendarDateOnly(calendarDay);
+  return !d.isBefore(start) && !d.isAfter(end);
+}
+
+/// First matching approved leave covering [calendarDay], or null.
+LeaveEntry? approvedLeaveCoveringCalendarDay(
+  List<LeaveEntry> leaves,
+  DateTime calendarDay,
+) {
+  for (final e in leaves) {
+    if (leaveEntryCoversCalendarDay(e, calendarDay)) return e;
+  }
+  return null;
+}

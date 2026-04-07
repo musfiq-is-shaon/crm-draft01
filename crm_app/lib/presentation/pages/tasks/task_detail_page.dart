@@ -1,4 +1,5 @@
 import 'package:confetti/confetti.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -702,12 +703,13 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
       final authState = ref.read(authProvider);
       final currentUserId = authState.user?.id;
 
-      // Debug: Show auth state
-      debugPrint('=== AUTH DEBUG ===');
-      debugPrint('authState.user: ${authState.user}');
-      debugPrint('authState.user?.id: $currentUserId');
-      debugPrint('authState.user?.name: ${authState.user?.name}');
-      debugPrint('==================');
+      if (kDebugMode) {
+        debugPrint('=== AUTH DEBUG ===');
+        debugPrint('authState.user: ${authState.user}');
+        debugPrint('authState.user?.id: $currentUserId');
+        debugPrint('authState.user?.name: ${authState.user?.name}');
+        debugPrint('==================');
+      }
 
       // Use selected Assign By user, or fall back to current user
       final assignByUserId = _selectedAssignByUserId ?? currentUserId;
@@ -742,16 +744,17 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
               actorUserId: currentUserId,
             );
 
-        // Debug: Print what was sent (remove in production)
-        debugPrint('=== TASK CREATE DEBUG ===');
-        debugPrint('Title: ${_titleController.text}');
-        debugPrint('CompanyId: $_selectedCompanyId');
-        debugPrint('DueDatetime: $_selectedDueDate');
-        debugPrint('Note: ${_noteController.text}');
-        debugPrint('assignByUserId: $assignByUserId');
-        debugPrint('assignToUserId: $_selectedAssignToUserId');
-        debugPrint('actorUserId: $currentUserId');
-        debugPrint('===========================');
+        if (kDebugMode) {
+          debugPrint('=== TASK CREATE DEBUG ===');
+          debugPrint('Title: ${_titleController.text}');
+          debugPrint('CompanyId: $_selectedCompanyId');
+          debugPrint('DueDatetime: $_selectedDueDate');
+          debugPrint('Note: ${_noteController.text}');
+          debugPrint('assignByUserId: $assignByUserId');
+          debugPrint('assignToUserId: $_selectedAssignToUserId');
+          debugPrint('actorUserId: $currentUserId');
+          debugPrint('===========================');
+        }
       } else {
         // Update existing task
         await ref
@@ -937,9 +940,11 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     textColor: textPrimary,
                     hintColor: textSecondary,
                     onChanged: (user) {
-                      debugPrint('=== DROPDOWN ONCHANGE DEBUG ===');
-                      debugPrint('Selected user: ${user?.id} - ${user?.name}');
-                      debugPrint('================================');
+                      if (kDebugMode) {
+                        debugPrint('=== DROPDOWN ONCHANGE DEBUG ===');
+                        debugPrint('Selected user: ${user?.id} - ${user?.name}');
+                        debugPrint('================================');
+                      }
                       setState(() {
                         _selectedAssignToUserId = user?.id;
                       });

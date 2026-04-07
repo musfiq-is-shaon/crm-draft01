@@ -5,6 +5,8 @@ import '../../../../core/services/app_haptics.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/attendance_provider.dart';
+import '../../../providers/leave_provider.dart';
+import '../../../../data/models/leave_model.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../../data/models/attendance_model.dart';
@@ -32,7 +34,15 @@ class TodayAttendanceCardWidget extends ConsumerStatefulWidget {
 
 class _TodayAttendanceCardWidgetState
     extends ConsumerState<TodayAttendanceCardWidget> {
-  String _statusText(TodayAttendance? todayAttendance) {
+  String _statusText(
+    TodayAttendance? todayAttendance, [
+    LeaveEntry? approvedLeaveToday,
+  ]) {
+    if (approvedLeaveToday != null && todayAttendance?.checkInTime == null) {
+      final type = approvedLeaveToday.leaveTypeName?.trim() ?? '';
+      if (type.isNotEmpty) return 'On leave ($type)';
+      return 'On approved leave';
+    }
     if (todayAttendance == null || todayAttendance.safeStatus == 'pending') {
       return 'Not checked in yet';
     }
@@ -45,7 +55,13 @@ class _TodayAttendanceCardWidgetState
     return 'Day complete';
   }
 
-  String? _statusHint(TodayAttendance? todayAttendance) {
+  String? _statusHint(
+    TodayAttendance? todayAttendance, [
+    LeaveEntry? approvedLeaveToday,
+  ]) {
+    if (approvedLeaveToday != null && todayAttendance?.checkInTime == null) {
+      return 'No check-in required while on approved leave.';
+    }
     if (todayAttendance == null) return null;
     switch (todayAttendance.safeStatus) {
       case 'pending':
@@ -74,9 +90,7 @@ class _TodayAttendanceCardWidgetState
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: borderColor.withValues(alpha: 0.75),
-        ),
+        border: Border.all(color: borderColor.withValues(alpha: 0.75)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +141,13 @@ class _TodayAttendanceCardWidgetState
     }
   }
 
-  IconData _statusIcon(TodayAttendance? todayAttendance) {
+  IconData _statusIcon(
+    TodayAttendance? todayAttendance, [
+    LeaveEntry? approvedLeaveToday,
+  ]) {
+    if (approvedLeaveToday != null && todayAttendance?.checkInTime == null) {
+      return Icons.event_available_outlined;
+    }
     final status = todayAttendance?.safeStatus;
     if (status == null || status == 'pending') {
       return Icons.schedule_outlined;
@@ -143,6 +163,14 @@ class _TodayAttendanceCardWidgetState
   Widget build(BuildContext context) {
     final state = ref.watch(attendanceProvider);
     final todayAttendance = state.todayAttendance;
+    final leavesAsync = ref.watch(myLeavesForAttendanceProvider);
+    final approvedLeaveToday = leavesAsync.maybeWhen(
+      data: (leaves) =>
+          approvedLeaveCoveringCalendarDay(leaves, DateTime.now()),
+      orElse: () => null,
+    );
+    final onLeaveWithoutCheckIn =
+        approvedLeaveToday != null && todayAttendance?.checkInTime == null;
     final locIn = _displaySource(
       todayAttendance?.locationIn,
       state.localCheckInLocation,
@@ -152,9 +180,11 @@ class _TodayAttendanceCardWidgetState
       state.localCheckOutLocation,
     );
     // Only show location rows when that event actually happened (or optimistic local right after hold).
-    final hasCheckInEvent = todayAttendance?.checkInTime != null ||
+    final hasCheckInEvent =
+        todayAttendance?.checkInTime != null ||
         (state.localCheckInLocation?.trim().isNotEmpty ?? false);
-    final hasCheckOutEvent = todayAttendance?.checkOutTime != null ||
+    final hasCheckOutEvent =
+        todayAttendance?.checkOutTime != null ||
         (state.localCheckOutLocation?.trim().isNotEmpty ?? false);
     final showLocIn = locIn.isNotEmpty && hasCheckInEvent;
     final showLocOut = locOut.isNotEmpty && hasCheckOutEvent;
@@ -164,8 +194,10 @@ class _TodayAttendanceCardWidgetState
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final borderColor = AppThemeColors.borderColor(context);
     final cs = Theme.of(context).colorScheme;
-    final statusColor = _statusColor(context, todayAttendance);
-    final statusHint = _statusHint(todayAttendance);
+    final statusColor = onLeaveWithoutCheckIn
+        ? cs.tertiary
+        : _statusColor(context, todayAttendance);
+    final statusHint = _statusHint(todayAttendance, approvedLeaveToday);
 
     // Listen for errors and show snackbar
     ref.listen(attendanceProvider, (previous, next) {
@@ -213,7 +245,7 @@ class _TodayAttendanceCardWidgetState
                   ),
                 ),
                 child: Icon(
-                  _statusIcon(todayAttendance),
+                  _statusIcon(todayAttendance, approvedLeaveToday),
                   color: statusColor,
                   size: 24,
                 ),
@@ -224,7 +256,7 @@ class _TodayAttendanceCardWidgetState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _statusText(todayAttendance),
+                      _statusText(todayAttendance, approvedLeaveToday),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -288,11 +320,7 @@ class _TodayAttendanceCardWidgetState
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.warning_amber,
-                            size: 16,
-                            color: w,
-                          ),
+                          Icon(Icons.warning_amber, size: 16, color: w),
                           const SizedBox(width: 4),
                           Text(
                             'Late',
@@ -374,33 +402,31 @@ class _TodayAttendanceCardWidgetState
               builder: (context) {
                 final s = Theme.of(context).colorScheme.secondary;
                 return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              margin: const EdgeInsets.only(bottom: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: s.withValues(alpha: 0.55),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, color: s, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Check-in and check-out are not enabled for your account. Contact HR.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.3,
-                        color: textPrimary,
-                      ),
-                    ),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: s.withValues(alpha: 0.55)),
                   ),
-                ],
-              ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, color: s, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Check-in and check-out are not enabled for your account. Contact HR.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.3,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -434,9 +460,44 @@ class _TodayAttendanceCardWidgetState
               ),
             ),
           ],
+          if (onLeaveWithoutCheckIn) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: cs.tertiaryContainer.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: cs.tertiary.withValues(alpha: 0.45)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.event_available_outlined,
+                    color: cs.tertiary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'You have approved leave for today'
+                      '${approvedLeaveToday.leaveTypeName != null && approvedLeaveToday.leaveTypeName!.trim().isNotEmpty ? ' (${approvedLeaveToday.leaveTypeName})' : ''}. '
+                      'Shift check-in reminders are paused for this day.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Hold to check in / check out (fingerprint-style ring; same duration + haptics)
           if (todayAttendance?.safeStatus != 'completed' &&
-              todayAttendance?.safeStatus != 'no_shift') ...[
+              todayAttendance?.safeStatus != 'no_shift' &&
+              !onLeaveWithoutCheckIn) ...[
             const SizedBox(height: 10),
             Builder(
               builder: (context) {
@@ -485,7 +546,8 @@ class _TodayAttendanceCardWidgetState
   Future<void> _fetchLocationAndSubmit(
     BuildContext context,
     WidgetRef ref,
-    Future<void> Function(String coordinatesPayload, String placeLabel) submit, {
+    Future<void> Function(String coordinatesPayload, String placeLabel)
+    submit, {
     required bool isCheckIn,
   }) async {
     final locationService = ref.read(locationServiceProvider);
@@ -532,11 +594,10 @@ class _TodayAttendanceCardWidgetState
         final textSecondary = AppThemeColors.textSecondaryColor(dialogCtx);
         return AlertDialog(
           title: Text(
-            isCheckIn ? 'Confirm check-in location' : 'Confirm check-out location',
-            style: TextStyle(
-              color: textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+            isCheckIn
+                ? 'Confirm check-in location'
+                : 'Confirm check-out location',
+            style: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -565,10 +626,7 @@ class _TodayAttendanceCardWidgetState
                 else
                   Text(
                     'Address lookup unavailable — coordinates below will be sent.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 14, color: textSecondary),
                   ),
                 const SizedBox(height: 10),
                 DecoratedBox(
@@ -638,7 +696,10 @@ class _TodayAttendanceCardWidgetState
       await ref.read(attendanceProvider.notifier).loadRecords(period: 'today');
       if (!context.mounted) return null;
       tt = ref.read(attendanceProvider).todayAttendance ?? tt;
-      id = resolveTodayAttendanceRowId(tt, ref.read(attendanceProvider).records);
+      id = resolveTodayAttendanceRowId(
+        tt,
+        ref.read(attendanceProvider).records,
+      );
       if (id != null && id.isNotEmpty) return id;
       await ref.read(attendanceProvider.notifier).loadToday();
       if (!context.mounted) return null;
@@ -653,7 +714,7 @@ class _TodayAttendanceCardWidgetState
     final mins = t.resolvedLateMinutes;
     final msg = mins != null && mins > 0
         ? 'You checked in $mins minutes after the allowed start time. '
-            'Submit a reason below for late reconciliation — your manager will review it.'
+              'Submit a reason below for late reconciliation — your manager will review it.'
         : 'Your check-in counts as late. Submit a short reason below for late reconciliation — your manager will review it.';
 
     var submitting = false;
@@ -663,163 +724,159 @@ class _TodayAttendanceCardWidgetState
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
-              final textPrimary =
-                  AppThemeColors.textPrimaryColor(dialogCtx);
-              final textSecondary =
-                  AppThemeColors.textSecondaryColor(dialogCtx);
-              return AlertDialog(
-                title: Text(
-                  'Late reconciliation',
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                  ),
+            final textPrimary = AppThemeColors.textPrimaryColor(dialogCtx);
+            final textSecondary = AppThemeColors.textSecondaryColor(dialogCtx);
+            return AlertDialog(
+              title: Text(
+                'Late reconciliation',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
                 ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Late check-in',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                          letterSpacing: 0.2,
-                        ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Late check-in',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                        letterSpacing: 0.2,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        msg,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: textSecondary,
-                          height: 1.35,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      msg,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: textSecondary,
+                        height: 1.35,
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: reasonCtrl,
-                        minLines: 3,
-                        maxLines: 6,
-                        enabled: !submitting,
-                        decoration: const InputDecoration(
-                          labelText: 'Reason for being late',
-                          hintText: 'e.g. Traffic, medical appointment…',
-                          border: OutlineInputBorder(),
-                          alignLabelWithHint: true,
-                        ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: reasonCtrl,
+                      minLines: 3,
+                      maxLines: 6,
+                      enabled: !submitting,
+                      decoration: const InputDecoration(
+                        labelText: 'Reason for being late',
+                        hintText: 'e.g. Traffic, medical appointment…',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: submitting
-                        ? null
-                        : () {
-                            Navigator.of(dialogCtx, rootNavigator: true).pop();
-                          },
-                    child: const Text('Skip for now'),
-                  ),
-                  FilledButton(
-                    onPressed: submitting
-                        ? null
-                        : () async {
-                            final text = reasonCtrl.text.trim();
-                            if (text.isEmpty) {
-                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Enter a reason or tap Skip for now',
-                                  ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () {
+                          Navigator.of(dialogCtx, rootNavigator: true).pop();
+                        },
+                  child: const Text('Skip for now'),
+                ),
+                FilledButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final text = reasonCtrl.text.trim();
+                          if (text.isEmpty) {
+                            ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Enter a reason or tap Skip for now',
                                 ),
-                              );
-                              return;
-                            }
-                            submitting = true;
-                            setModalState(() {});
-                            try {
-                              final rowId = await resolveAttendanceRowId();
-                              if (rowId == null || rowId.isEmpty) {
-                                submitting = false;
-                                setModalState(() {});
-                                if (dialogCtx.mounted) {
-                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                                    SnackBar(
-                                      content: const Text(
-                                        'Could not find your attendance record yet. '
-                                        'Try again in a moment, or add a reason from More → Attendance.',
-                                      ),
-                                      backgroundColor: Theme.of(dialogCtx)
-                                          .colorScheme
-                                          .error,
-                                      duration: const Duration(seconds: 5),
-                                    ),
-                                  );
-                                }
-                                return;
-                              }
-                              await ref
-                                  .read(
-                                    attendanceReconciliationProvider.notifier,
-                                  )
-                                  .submitReason(
-                                    attendanceId: rowId,
-                                    reason: text,
-                                  );
-                              if (dialogCtx.mounted) {
-                                Navigator.of(dialogCtx, rootNavigator: true)
-                                    .pop();
-                              }
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Late reconciliation sent for review',
-                                    ),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
+                              ),
+                            );
+                            return;
+                          }
+                          submitting = true;
+                          setModalState(() {});
+                          try {
+                            final rowId = await resolveAttendanceRowId();
+                            if (rowId == null || rowId.isEmpty) {
                               submitting = false;
                               setModalState(() {});
                               if (dialogCtx.mounted) {
-                                final detail = e is AppException
-                                    ? e.message
-                                    : e.toString();
-                                final errText = detail.trim().isEmpty
-                                    ? 'Could not submit. Try More → Attendance.'
-                                    : detail;
                                 ScaffoldMessenger.of(dialogCtx).showSnackBar(
                                   SnackBar(
-                                    content: Text(errText),
-                                    backgroundColor: Theme.of(dialogCtx)
-                                        .colorScheme
-                                        .error,
+                                    content: const Text(
+                                      'Could not find your attendance record yet. '
+                                      'Try again in a moment, or add a reason from More → Attendance.',
+                                    ),
+                                    backgroundColor: Theme.of(
+                                      dialogCtx,
+                                    ).colorScheme.error,
+                                    duration: const Duration(seconds: 5),
                                   ),
                                 );
                               }
+                              return;
                             }
-                          },
-                    child: submitting
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Submit'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
+                            await ref
+                                .read(attendanceReconciliationProvider.notifier)
+                                .submitReason(
+                                  attendanceId: rowId,
+                                  reason: text,
+                                );
+                            if (dialogCtx.mounted) {
+                              Navigator.of(
+                                dialogCtx,
+                                rootNavigator: true,
+                              ).pop();
+                            }
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Late reconciliation sent for review',
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            submitting = false;
+                            setModalState(() {});
+                            if (dialogCtx.mounted) {
+                              final detail = e is AppException
+                                  ? e.message
+                                  : e.toString();
+                              final errText = detail.trim().isEmpty
+                                  ? 'Could not submit. Try More → Attendance.'
+                                  : detail;
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                SnackBar(
+                                  content: Text(errText),
+                                  backgroundColor: Theme.of(
+                                    dialogCtx,
+                                  ).colorScheme.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: submitting
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
     // Pop runs route teardown; disposing in the next frame avoids using the controller after dispose.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       reasonCtrl.dispose();

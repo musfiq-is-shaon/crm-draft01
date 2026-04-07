@@ -79,11 +79,12 @@ class ApiClient {
     Options? options,
   }) async {
     try {
-      // Debug: Print POST request
-      debugPrint('=== API POST REQUEST ===');
-      debugPrint('Path: $path');
-      debugPrint('Data: $data');
-      debugPrint('========================');
+      if (kDebugMode) {
+        debugPrint('=== API POST REQUEST ===');
+        debugPrint('Path: $path');
+        debugPrint('Data: $data');
+        debugPrint('========================');
+      }
 
       return await _dio.post(
         path,
@@ -92,12 +93,13 @@ class ApiClient {
         options: options,
       );
     } on DioException catch (e) {
-      // Debug: Print error
-      debugPrint('=== API POST ERROR ===');
-      debugPrint('Error: $e');
-      debugPrint('Response: ${e.response?.data}');
-      debugPrint('Status Code: ${e.response?.statusCode}');
-      debugPrint('======================');
+      if (kDebugMode) {
+        debugPrint('=== API POST ERROR ===');
+        debugPrint('Error: $e');
+        debugPrint('Response: ${e.response?.data}');
+        debugPrint('Status Code: ${e.response?.statusCode}');
+        debugPrint('======================');
+      }
       throw _handleError(e);
     }
   }

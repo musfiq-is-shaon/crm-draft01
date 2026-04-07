@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/json_parse.dart';
 import '../../core/services/notification_service.dart';
@@ -50,7 +50,9 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
         state = NotificationSettings.fromJson(json);
       }
     } catch (e) {
-      debugPrint('Error loading notification settings: $e');
+      if (kDebugMode) {
+        debugPrint('Error loading notification settings: $e');
+      }
     }
   }
 

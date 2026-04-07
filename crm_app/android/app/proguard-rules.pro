@@ -61,8 +61,19 @@
 
 
 # Flutter Local Notifications
+# Release (Play Store) uses R8: Gson loads scheduled notifications from SharedPreferences on boot.
+# Without these keeps, deserialization can fail silently and no zoned alarms fire.
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
 -keep class ezpaypal.flutter_local_notifications_linux.** { *; }
+# Gson TypeToken used for ArrayList<NotificationDetails> persistence
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+# Polymorphic styles + enum adapters registered in FlutterLocalNotificationsPlugin.buildGson()
+-keep class com.dexterous.flutterlocalnotifications.models.styles.StyleInformation { *; }
+-keep class com.dexterous.flutterlocalnotifications.models.styles.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.models.ScheduleMode { *; }
+-keep class com.dexterous.flutterlocalnotifications.models.ScheduleMode$* { *; }
+-keep class com.dexterous.flutterlocalnotifications.RuntimeTypeAdapterFactory { *; }
 
 # Flutter Secure Storage
 -keep class com.it_nomads.fluttersecurestorage.** { *; }
