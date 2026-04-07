@@ -403,7 +403,7 @@ class MorePage extends ConsumerWidget {
 
           Center(
             child: Text(
-              'Version 1.0.0',
+              'Version 1.2.2',
               style: TextStyle(fontSize: 12, color: textTertiary),
             ),
           ),

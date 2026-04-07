@@ -43,8 +43,8 @@ android {
         applicationId = "app.atl.crm"
         minSdk = flutter.minSdkVersion
         targetSdk = 35
-        versionCode = 27
-        versionName = "1.2.2"
+        versionCode = 31
+        versionName = "1.2.3"
     }
 
     buildTypes {

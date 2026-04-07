@@ -14,8 +14,10 @@ import '../../providers/rbac_provider.dart'
         rbacProvider,
         rbacMeProvider,
         rbacAccessDigestProvider,
-        dashboardQuickActionsAdminLayoutProvider,
-        rbacModuleAdminProvider;
+        rbacModuleAdminProvider,
+        dashboardQuickActionSalesProvider,
+        dashboardQuickActionExpensesProvider,
+        dashboardTasksModuleProvider;
 import '../../widgets/crm_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
@@ -81,27 +83,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final notificationsState = ref.watch(notificationsProvider);
     final me = ref.watch(rbacMeProvider);
     ref.watch(rbacAccessDigestProvider);
-    final adminQuickLayout =
-        ref.watch(dashboardQuickActionsAdminLayoutProvider);
-    // Icons/labels: admin layout uses "lead" wording; default uses "deal".
-    final salesIcon =
-        adminQuickLayout ? Icons.person_add_outlined : Icons.trending_up_outlined;
-    final salesLabel = adminQuickLayout ? 'Add Lead' : 'Add Deal';
     final tasksModuleAdmin =
         ref.watch(rbacModuleAdminProvider(RbacPageKey.tasks));
-    // Prefer [hasModuleAccess] so Quick Actions match `effective` RBAC even when
-    // `navPageKeys` omits a key the backend still grants (see [RbacMe.hasModuleAccess]).
-    final canSales = me?.hasModuleAccess(RbacPageKey.sales) ?? false;
-    final canTasks = me?.hasModuleAccess(RbacPageKey.tasks) ?? false;
-    final canExpenses = me?.hasModuleAccess(RbacPageKey.expenses) ?? false;
+    final canSales = ref.watch(dashboardQuickActionSalesProvider);
+    final canTasks = ref.watch(dashboardTasksModuleProvider);
+    final canExpenses = ref.watch(dashboardQuickActionExpensesProvider);
+    final salesLead =
+        me?.isModuleAdmin(RbacPageKey.sales) ?? false;
     final canAttendance =
         me != null &&
         (me.hasNav(RbacPageKey.attendance) || me.hasNav(RbacPageKey.hr));
-    // Same visibility rule for admin vs default layout: any permitted module
-    // (sales / expenses / tasks). Admin layout previously omitted expenses, so
-    // expense-only RBAC users saw no Quick Actions at all.
-    final hasAnyQuickAction =
-        canSales || canExpenses || canTasks;
+    final hasAnyQuickAction = canSales || canExpenses || canTasks;
 
     final userFilteredTasks = ref.watch(userFilteredTasksProvider);
     final userPendingTasksSorted = ref.watch(userPendingTasksSortedProvider);
@@ -254,8 +246,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             if (canSales) ...[
                               Expanded(
                                 child: _QuickActionButton(
-                                  icon: salesIcon,
-                                  label: salesLabel,
+                                  icon: salesLead
+                                      ? Icons.person_add_outlined
+                                      : Icons.trending_up_outlined,
+                                  label: salesLead ? 'Add Lead' : 'Add Deal',
                                   color: primary,
                                   onTap: () {
                                     Navigator.push(

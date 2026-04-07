@@ -133,8 +133,37 @@ final companyProfileEditAllowedProvider = Provider<bool>((ref) {
       false;
 });
 
-/// Dashboard uses the “admin” quick-action layout if JWT admin or any RBAC module admin.
-final dashboardQuickActionsAdminLayoutProvider = Provider<bool>((ref) {
-  if (ref.watch(isAdminProvider)) return true;
-  return ref.watch(rbacMeProvider)?.hasAnyRbacModuleAdmin ?? false;
+/// Dashboard **Add Deal** / **Add Lead** quick action: same rule as the Deals bottom tab
+/// ([ShellPage] uses [RbacMe.hasNav] for non–JWT users), plus [hasModuleAccess].
+/// JWT admins: follow `effective.sales` once loaded (default show until then).
+final dashboardQuickActionSalesProvider = Provider<bool>((ref) {
+  if (ref.watch(isAdminProvider)) {
+    return ref.watch(rbacMeProvider)?.hasModuleAccess(RbacPageKey.sales) ?? true;
+  }
+  final me = ref.watch(rbacMeProvider);
+  if (me == null) return false;
+  return me.hasNav(RbacPageKey.sales) && me.hasModuleAccess(RbacPageKey.sales);
 });
+
+/// Dashboard **Add Expense** quick action: same rule as the Expenses bottom tab
+/// ([ShellPage] uses [RbacMe.hasNav] for non–JWT users), plus [hasModuleAccess].
+/// JWT admins: follow `effective.expenses` once loaded (default show until then).
+final dashboardQuickActionExpensesProvider = Provider<bool>((ref) {
+  if (ref.watch(isAdminProvider)) {
+    return ref.watch(rbacMeProvider)?.hasModuleAccess(RbacPageKey.expenses) ??
+        true;
+  }
+  final me = ref.watch(rbacMeProvider);
+  if (me == null) return false;
+  return me.hasNav(RbacPageKey.expenses) && me.hasModuleAccess(RbacPageKey.expenses);
+});
+
+/// Dashboard tasks quick action and task sections: `tasks` has no bottom tab — use
+/// [RbacMe.hasModuleAccess] only. JWT admins respect `effective.tasks` when loaded.
+final dashboardTasksModuleProvider = Provider<bool>((ref) {
+  if (ref.watch(isAdminProvider)) {
+    return ref.watch(rbacMeProvider)?.hasModuleAccess(RbacPageKey.tasks) ?? true;
+  }
+  return ref.watch(rbacMeProvider)?.hasModuleAccess(RbacPageKey.tasks) ?? false;
+});
+
