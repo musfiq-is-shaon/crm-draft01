@@ -33,6 +33,7 @@ class _TeamAttendanceTabState extends ConsumerState<TeamAttendanceTab> {
   List<AttendanceRecord> _rows = [];
   bool _loading = true;
   String? _error;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -41,29 +42,34 @@ class _TeamAttendanceTabState extends ConsumerState<TeamAttendanceTab> {
   }
 
   Future<void> _load() async {
+    final gen = ++_loadGeneration;
     setState(() {
       _loading = true;
       _error = null;
+      _rows = [];
     });
     try {
-      await ref.read(usersProvider.notifier).loadUsers();
+      final usersState = ref.read(usersProvider);
+      if (usersState.users.isEmpty) {
+        await ref.read(usersProvider.notifier).loadUsers();
+      }
+      if (!mounted || gen != _loadGeneration) return;
+
       final rows = await ref.read(attendanceRepositoryProvider).getAllAttendance(
             period: _period,
             userId: _filterUserId,
           );
-      if (mounted) {
-        setState(() {
-          _rows = rows;
-          _loading = false;
-        });
-      }
+      if (!mounted || gen != _loadGeneration) return;
+      setState(() {
+        _rows = rows;
+        _loading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
+      if (!mounted || gen != _loadGeneration) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 

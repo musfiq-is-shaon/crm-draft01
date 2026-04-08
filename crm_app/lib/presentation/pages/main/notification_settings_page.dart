@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/task_model.dart';
@@ -9,6 +7,7 @@ import '../../../core/theme/app_theme_colors.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../widgets/crm_card.dart';
+import 'reminder_reliability_guide_page.dart';
 
 Future<void> _rescheduleTasksAndShiftAlerts(WidgetRef ref, List<Task> tasks) async {
   await ref.read(notificationSettingsProvider.notifier).rescheduleNotifications(tasks);
@@ -182,20 +181,61 @@ class NotificationSettingsPage extends ConsumerWidget {
               ),
             ),
           ),
-          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
-            SizedBox(height: AppThemeColors.sectionGap),
-            _AndroidExactAlarmsCard(
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
-              primaryColor: primaryColor,
-              onChanged: () async {
-                await _rescheduleTasksAndShiftAlerts(
-                  ref,
-                  tasksState.tasks,
-                );
-              },
+          SizedBox(height: AppThemeColors.sectionGap),
+          CRMCard(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) =>
+                          const ReminderReliabilityGuidePage(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: AppThemeColors.cardInsetPadding,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.smartphone_outlined,
+                        color: primaryColor,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Reminders late or missing?',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Step-by-step for Samsung, Xiaomi, OPPO, vivo, Huawei, Pixel, and more',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: textSecondary),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ],
+          ),
           SizedBox(height: AppThemeColors.sectionGap),
 
           // Test Notification Button
@@ -303,140 +343,6 @@ class NotificationSettingsPage extends ConsumerWidget {
                 color: textSecondary?.withValues(alpha: 0.3),
                 size: 22,
               ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Android 12+: [SCHEDULE_EXACT_ALARM] helps the shift-start reminder fire on time.
-class _AndroidExactAlarmsCard extends StatefulWidget {
-  const _AndroidExactAlarmsCard({
-    required this.textPrimary,
-    required this.textSecondary,
-    required this.primaryColor,
-    required this.onChanged,
-  });
-
-  final Color textPrimary;
-  final Color textSecondary;
-  final Color primaryColor;
-  final Future<void> Function() onChanged;
-
-  @override
-  State<_AndroidExactAlarmsCard> createState() =>
-      _AndroidExactAlarmsCardState();
-}
-
-class _AndroidExactAlarmsCardState extends State<_AndroidExactAlarmsCard> {
-  bool? _exactOk;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _refresh();
-  }
-
-  Future<void> _refresh() async {
-    setState(() => _loading = true);
-    final v = await NotificationService().canScheduleExactAlarmsAndroid();
-    if (mounted) {
-      setState(() {
-        _exactOk = v;
-        _loading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CRMCard(
-      child: Padding(
-        padding: AppThemeColors.cardInsetPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.alarm, color: widget.primaryColor, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Shift reminders (Android)',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: widget.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Shift-start check-in reminders use exact alarms. If this is off, Android may delay them when the app is closed.',
-              style: TextStyle(fontSize: 13, color: widget.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            if (_loading)
-              Text(
-                'Checking…',
-                style: TextStyle(fontSize: 13, color: widget.textSecondary),
-              )
-            else
-              Row(
-                children: [
-                  Icon(
-                    _exactOk == true ? Icons.check_circle : Icons.warning_amber_rounded,
-                    size: 20,
-                    color: _exactOk == true
-                        ? widget.primaryColor
-                        : Colors.orange,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _exactOk == true
-                          ? 'Alarms & reminders allowed'
-                          : 'Alarms & reminders not allowed — tap to fix',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: widget.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _loading
-                    ? null
-                    : () async {
-                        await NotificationService().requestExactAlarmsAndroid();
-                        await _refresh();
-                        await widget.onChanged();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                _exactOk == true
-                                    ? 'Exact alarms enabled. Shift reminders rescheduled.'
-                                    : 'If you turned on Alarms & reminders, shift reminders were rescheduled.',
-                              ),
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
-                        }
-                      },
-                icon: const Icon(Icons.settings_suggest_outlined, size: 20),
-                label: const Text('Open alarm permission'),
-              ),
-            ),
           ],
         ),
       ),

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math' show pi;
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../../core/services/app_haptics.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,7 @@ import '../../../../core/services/location_service.dart';
 import '../../../../../data/models/attendance_model.dart';
 import '../../../providers/attendance_reconciliation_provider.dart';
 import 'attendance_location_row.dart';
+import 'live_location_osm_map_page.dart';
 
 /// Prefer a human-readable server value; otherwise session [localFallback]; else [server] (may be coords).
 String _displaySource(String? server, String? localFallback) {
@@ -32,8 +35,363 @@ class TodayAttendanceCardWidget extends ConsumerStatefulWidget {
       _TodayAttendanceCardWidgetState();
 }
 
-class _TodayAttendanceCardWidgetState
-    extends ConsumerState<TodayAttendanceCardWidget> {
+class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardWidget>
+    with WidgetsBindingObserver {
+  static const Duration _liveFirstFixTimeout = Duration(seconds: 22);
+  static const Duration _liveGeocodeDebounce = Duration(milliseconds: 2000);
+
+  StreamSubscription<Position>? _liveLocSub;
+  Timer? _liveGeocodeDebounceTimer;
+  Timer? _liveFirstFixTimer;
+  int _liveGeocodeGen = 0;
+  bool _appInBackground = false;
+
+  Position? _livePosition;
+  String? _liveAddress;
+  /// `null` = no error; otherwise a short key for user-facing copy.
+  String? _liveLocationErrorKey;
+  bool _liveWaitingFirstFix = true;
+  bool _liveRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _beginLiveLocation());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _disposeLiveLocation();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _appInBackground = true;
+      _disposeLiveLocation();
+    } else if (state == AppLifecycleState.resumed) {
+      _appInBackground = false;
+      _beginLiveLocation();
+    }
+  }
+
+  void _disposeLiveLocation() {
+    _liveLocSub?.cancel();
+    _liveLocSub = null;
+    _liveGeocodeDebounceTimer?.cancel();
+    _liveGeocodeDebounceTimer = null;
+    _liveFirstFixTimer?.cancel();
+    _liveFirstFixTimer = null;
+  }
+
+  Future<void> _beginLiveLocation() async {
+    if (!mounted || _appInBackground) return;
+    _disposeLiveLocation();
+    setState(() {
+      _livePosition = null;
+      _liveAddress = null;
+      _liveLocationErrorKey = null;
+      _liveWaitingFirstFix = true;
+    });
+
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!mounted || _appInBackground) return;
+    if (!enabled) {
+      setState(() {
+        _liveWaitingFirstFix = false;
+        _liveLocationErrorKey = 'services_off';
+      });
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (!mounted || _appInBackground) return;
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      setState(() {
+        _liveWaitingFirstFix = false;
+        _liveLocationErrorKey = 'permission_denied';
+      });
+      return;
+    }
+
+    final stream =
+        ref.read(locationServiceProvider).openDashboardPositionStream();
+
+    _liveFirstFixTimer = Timer(_liveFirstFixTimeout, () {
+      if (!mounted) return;
+      if (_livePosition == null && _liveLocationErrorKey == null) {
+        setState(() {
+          _liveWaitingFirstFix = false;
+          _liveLocationErrorKey = 'no_fix';
+        });
+      }
+    });
+
+    _liveLocSub = stream.listen(
+      (pos) {
+        if (!mounted || _appInBackground) return;
+        _liveFirstFixTimer?.cancel();
+        setState(() {
+          _livePosition = pos;
+          _liveWaitingFirstFix = false;
+          _liveLocationErrorKey = null;
+        });
+        _scheduleLiveGeocode(pos);
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _liveWaitingFirstFix = false;
+          _liveLocationErrorKey = 'error';
+        });
+      },
+    );
+  }
+
+  void _scheduleLiveGeocode(Position pos) {
+    _liveGeocodeDebounceTimer?.cancel();
+    final gen = ++_liveGeocodeGen;
+    _liveGeocodeDebounceTimer = Timer(_liveGeocodeDebounce, () async {
+      final coords = LocationService.formatCoordinatesForStorage(
+        pos.latitude,
+        pos.longitude,
+      );
+      final label = await LocationService.placeLabelFromCoordinateString(coords);
+      if (!mounted || gen != _liveGeocodeGen) return;
+      setState(() {
+        _liveAddress = label.trim().isNotEmpty ? label : null;
+      });
+    });
+  }
+
+  void _openLiveMap(BuildContext context) {
+    final p = _livePosition;
+    if (p == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (ctx) => LiveLocationOsmMapPage(
+          initialLatitude: p.latitude,
+          initialLongitude: p.longitude,
+          placeLabel: _liveAddress,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onRefreshLiveLocation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    if (_liveRefreshing) return;
+    setState(() {
+      _liveRefreshing = true;
+      _liveLocationErrorKey = null;
+    });
+    final pos =
+        await ref.read(locationServiceProvider).fetchHighAccuracyPosition();
+    if (!mounted) return;
+    setState(() => _liveRefreshing = false);
+    if (pos == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Could not refresh location. Enable GPS and allow location access.',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      if (_livePosition == null) {
+        setState(() {
+          _liveWaitingFirstFix = false;
+          _liveLocationErrorKey = 'error';
+        });
+      }
+      return;
+    }
+    _liveFirstFixTimer?.cancel();
+    setState(() {
+      _livePosition = pos;
+      _liveWaitingFirstFix = false;
+      _liveLocationErrorKey = null;
+    });
+    _scheduleLiveGeocode(pos);
+  }
+
+  Widget _buildLiveLocationSection({
+    required BuildContext context,
+    required WidgetRef ref,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color borderColor,
+    required ColorScheme cs,
+  }) {
+    const caption = 'Live location';
+    String? primary;
+    String? secondary;
+    Widget? leading;
+
+    final err = _liveLocationErrorKey;
+    if (err == 'services_off') {
+      leading = Icon(Icons.location_off_outlined, size: 18, color: textSecondary);
+      primary = 'Location services off';
+      secondary = 'Turn on device location to see live updates here.';
+    } else if (err == 'permission_denied') {
+      leading = Icon(Icons.location_disabled_outlined, size: 18, color: textSecondary);
+      primary = 'Location permission needed';
+      secondary = 'Allow location access for this app to see your current position.';
+    } else if (err == 'no_fix') {
+      leading = Icon(Icons.gps_not_fixed, size: 18, color: textSecondary);
+      primary = 'No GPS fix yet';
+      secondary = 'Try moving outdoors or wait a few seconds.';
+    } else if (err == 'error') {
+      leading = Icon(Icons.error_outline, size: 18, color: textSecondary);
+      primary = 'Could not update location';
+      secondary = null;
+    } else if (_livePosition != null) {
+      final p = _livePosition!;
+      leading = Icon(Icons.my_location, size: 18, color: cs.primary);
+      final shortCoords =
+          '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}';
+      final acc = p.accuracy.isFinite ? p.accuracy.round() : null;
+      final meta = <String?>[
+        if (acc != null) '±$acc m',
+        'Updated ${_formatLiveClock(p.timestamp)}',
+      ].join(' · ');
+      if (_liveAddress != null && _liveAddress!.trim().isNotEmpty) {
+        primary = _liveAddress!.trim();
+        secondary = '$shortCoords · $meta';
+      } else {
+        primary = shortCoords;
+        secondary = meta;
+      }
+    } else if (_liveWaitingFirstFix) {
+      leading = SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: cs.primary,
+        ),
+      );
+      secondary = 'Getting your position…';
+    }
+
+    final hasMapTarget = _livePosition != null;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 2, 6),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor.withValues(alpha: 0.65)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: leading ??
+                Icon(Icons.my_location_outlined, size: 18, color: textSecondary),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: hasMapTarget ? () => _openLiveMap(context) : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 0, 4, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              caption,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ),
+                          if (hasMapTarget)
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: cs.primary.withValues(alpha: 0.85),
+                            ),
+                        ],
+                      ),
+                      if (primary != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          primary,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                            color: textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (secondary != null) ...[
+                        const SizedBox(height: 1),
+                        Text(
+                          secondary,
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.25,
+                            color: textSecondary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Refresh location',
+            onPressed: _liveRefreshing
+                ? null
+                : () => _onRefreshLiveLocation(context, ref),
+            icon: _liveRefreshing
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: cs.primary,
+                    ),
+                  )
+                : Icon(Icons.refresh, size: 20, color: cs.primary),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _statusText(
     TodayAttendance? todayAttendance, [
     LeaveEntry? approvedLeaveToday,
@@ -364,6 +722,15 @@ class _TodayAttendanceCardWidgetState
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          _buildLiveLocationSection(
+            context: context,
+            ref: ref,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+            borderColor: borderColor,
+            cs: cs,
+          ),
           if (hasLocationLines) ...[
             const SizedBox(height: 8),
             if (showLocIn)
@@ -542,7 +909,7 @@ class _TodayAttendanceCardWidgetState
     );
   }
 
-  /// After hold completes: gets GPS, then shows a blocking dialog to confirm location before API submit.
+  /// After hold completes: gets GPS, then submits (no confirmation dialog).
   Future<void> _fetchLocationAndSubmit(
     BuildContext context,
     WidgetRef ref,
@@ -585,89 +952,6 @@ class _TodayAttendanceCardWidgetState
       }
       return;
     }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) {
-        final textPrimary = AppThemeColors.textPrimaryColor(dialogCtx);
-        final textSecondary = AppThemeColors.textSecondaryColor(dialogCtx);
-        return AlertDialog(
-          title: Text(
-            isCheckIn
-                ? 'Confirm check-in location'
-                : 'Confirm check-out location',
-            style: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Please verify this is where you are before continuing.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: textSecondary,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (captured.placeLabel.trim().isNotEmpty)
-                  Text(
-                    captured.placeLabel,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: textPrimary,
-                      height: 1.3,
-                    ),
-                  )
-                else
-                  Text(
-                    'Address lookup unavailable — coordinates below will be sent.',
-                    style: TextStyle(fontSize: 14, color: textSecondary),
-                  ),
-                const SizedBox(height: 10),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Theme.of(dialogCtx)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SelectableText(
-                      captured.coordinatesString,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: textSecondary,
-                        fontFamily: 'monospace',
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(true),
-              child: const Text('Confirm location'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
 
     await submit(captured.coordinatesString, captured.placeLabel);
     if (!context.mounted) return;
@@ -882,6 +1166,14 @@ class _TodayAttendanceCardWidgetState
       reasonCtrl.dispose();
     });
   }
+}
+
+String _formatLiveClock(DateTime time) {
+  final l = time.toLocal();
+  final h = l.hour.toString().padLeft(2, '0');
+  final m = l.minute.toString().padLeft(2, '0');
+  final s = l.second.toString().padLeft(2, '0');
+  return '$h:$m:$s';
 }
 
 String _formatTime(DateTime time) {

@@ -80,6 +80,43 @@ class LocationService {
   }
 
   /// Prefer a new fix over a stale fused/cached point (especially on Android).
+  /// Settings for dashboard live location: updates when the device moves (~[distanceFilter] m).
+  static LocationSettings _dashboardStreamSettings() {
+    const distanceFilter = 12;
+    if (kIsWeb) {
+      return const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        distanceFilter: distanceFilter,
+      );
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: distanceFilter,
+        );
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return AppleSettings(
+          accuracy: LocationAccuracy.high,
+          activityType: ActivityType.other,
+          distanceFilter: distanceFilter,
+        );
+      default:
+        return const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: distanceFilter,
+        );
+    }
+  }
+
+  /// Live position updates for dashboard UI. Call only when services are on and permission is granted.
+  Stream<Position> openDashboardPositionStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: _dashboardStreamSettings(),
+    );
+  }
+
   static LocationSettings _attendanceLocationSettings() {
     const timeLimit = Duration(seconds: 10);
     if (kIsWeb) {
@@ -108,6 +145,32 @@ class LocationService {
           accuracy: LocationAccuracy.high,
           timeLimit: timeLimit,
         );
+    }
+  }
+
+  /// Single high-accuracy fix (same as check-in flow). For manual refresh / map center.
+  Future<Position?> fetchHighAccuracyPosition() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+
+      return await Geolocator.getCurrentPosition(
+        locationSettings: _attendanceLocationSettings(),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('fetchHighAccuracyPosition: $e');
+      }
+      return null;
     }
   }
 
