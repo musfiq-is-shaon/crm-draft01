@@ -71,7 +71,7 @@ class _AttendanceHubPageState extends ConsumerState<AttendanceHubPage>
     if (isReviewer) {
       tabs.addAll(const [
         Tab(text: 'Team attendance'),
-        Tab(text: 'Reviews'),
+        Tab(text: 'Reconciliation'),
       ]);
     }
 

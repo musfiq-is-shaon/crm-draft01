@@ -37,10 +37,7 @@ class _TeamAttendanceTabState extends ConsumerState<TeamAttendanceTab> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(usersProvider.notifier).loadUsers();
-      _load();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
@@ -49,6 +46,7 @@ class _TeamAttendanceTabState extends ConsumerState<TeamAttendanceTab> {
       _error = null;
     });
     try {
+      await ref.read(usersProvider.notifier).loadUsers();
       final rows = await ref.read(attendanceRepositoryProvider).getAllAttendance(
             period: _period,
             userId: _filterUserId,
