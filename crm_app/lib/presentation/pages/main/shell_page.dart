@@ -9,6 +9,7 @@ import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../providers/attendance_provider.dart';
+import '../../providers/dashboard_live_location_provider.dart';
 import '../../providers/contact_provider.dart';
 import '../../providers/notifications_provider.dart';
 import '../../providers/rbac_prefetch.dart';
@@ -365,6 +366,9 @@ class _ShellPageState extends ConsumerState<ShellPage>
     final me = ref.read(rbacProvider).me;
 
     if (id == _kDashboard) {
+      final tick = ref.read(dashboardVisitLiveLocationRefreshTickProvider);
+      ref.read(dashboardVisitLiveLocationRefreshTickProvider.notifier).state =
+          tick + 1;
       prefetchCrmLookupData(ref, me);
       ref.read(notificationsProvider.notifier).load(silent: true);
       final uid = ref.read(currentUserIdProvider)?.trim();

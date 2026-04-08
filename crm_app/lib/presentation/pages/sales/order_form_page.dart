@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +35,14 @@ class OrderFormPage extends ConsumerStatefulWidget {
 }
 
 class _OrderFormPageState extends ConsumerState<OrderFormPage> {
+  static const _kAllowedAttachmentExts = <String>[
+    'pdf',
+    'jpg',
+    'jpeg',
+    'png',
+    'svg',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _detailsController = TextEditingController();
   final _revenueController = TextEditingController();
@@ -45,6 +56,8 @@ class _OrderFormPageState extends ConsumerState<OrderFormPage> {
   DateTime? _confirmed;
   DateTime? _delivery;
   bool _submitting = false;
+  String? _attachmentFileName;
+  String? _attachmentData;
 
   bool get _dealLocked => widget.closedWonSale != null;
 
@@ -163,6 +176,8 @@ class _OrderFormPageState extends ConsumerState<OrderFormPage> {
             assignTo: _assignToId,
             statusChangeNote: null,
             changedByUserId: ref.read(authProvider).user?.id,
+            attachmentFileName: _attachmentFileName,
+            attachmentData: _attachmentData,
             // API: sync linked funnel deal to Closed Won when the order is created (Postman).
             finalizeCloseWon: _saleId != null && _saleId!.isNotEmpty,
             closedWonStatus: 'closed_won',
@@ -181,6 +196,46 @@ class _OrderFormPageState extends ConsumerState<OrderFormPage> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  Future<void> _pickAttachment() async {
+    final r = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: _kAllowedAttachmentExts,
+    );
+    if (r == null || r.files.isEmpty) return;
+    final f = r.files.first;
+    final bytes = f.bytes;
+    if (bytes == null) return;
+    final dataUrl = _buildDataUrlForFile(f.name, bytes);
+    if (dataUrl == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unsupported file type. Use PDF/JPG/JPEG/PNG/SVG.'),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _attachmentFileName = f.name;
+      _attachmentData = dataUrl;
+    });
+  }
+
+  String? _buildDataUrlForFile(String fileName, List<int> bytes) {
+    final ext = fileName.split('.').last.toLowerCase().trim();
+    final mime = switch (ext) {
+      'pdf' => 'application/pdf',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'svg' => 'image/svg+xml',
+      _ => '',
+    };
+    if (mime.isEmpty) return null;
+    final b64 = base64Encode(bytes);
+    return 'data:$mime;base64,$b64';
   }
 
   @override
@@ -366,6 +421,30 @@ class _OrderFormPageState extends ConsumerState<OrderFormPage> {
                 onPick: (d) => setState(() => _delivery = d),
               ),
             ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _pickAttachment,
+              icon: const Icon(Icons.attach_file, size: 18),
+              label: Text(
+                _attachmentFileName == null || _attachmentFileName!.isEmpty
+                    ? 'Attachment (optional)'
+                    : _attachmentFileName!,
+              ),
+            ),
+            if (_attachmentFileName != null && _attachmentFileName!.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _attachmentFileName = null;
+                      _attachmentData = null;
+                    });
+                  },
+                  icon: const Icon(Icons.close, size: 16),
+                  label: const Text('Clear attachment'),
+                ),
+              ),
             SizedBox(height: AppSpacing.xl),
             FilledButton(
               onPressed: (_submitting || _effectiveSale == null)

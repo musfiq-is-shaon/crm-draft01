@@ -577,12 +577,29 @@ class LeaveEntry {
         json['attachmentFileName']?.toString() ??
         json['attachment_file_name']?.toString();
     String? attachmentUrl =
-        json['attachmentUrl']?.toString() ?? json['attachment_url']?.toString();
+        json['attachmentUrl']?.toString() ??
+        json['attachment_url']?.toString() ??
+        json['attachmentData']?.toString() ??
+        json['attachment_data']?.toString();
     if (attachment is Map) {
       final am = Map<String, dynamic>.from(attachment);
       attachmentFileName ??=
           am['fileName']?.toString() ?? am['name']?.toString();
-      attachmentUrl ??= am['url']?.toString() ?? am['path']?.toString();
+      attachmentUrl ??=
+          am['url']?.toString() ??
+          am['path']?.toString() ??
+          am['data']?.toString();
+    } else if (attachment is List && attachment.isNotEmpty) {
+      final first = attachment.first;
+      if (first is Map) {
+        final am = Map<String, dynamic>.from(first);
+        attachmentFileName ??=
+            am['fileName']?.toString() ?? am['name']?.toString();
+        attachmentUrl ??=
+            am['url']?.toString() ??
+            am['path']?.toString() ??
+            am['data']?.toString();
+      }
     }
 
     return LeaveEntry(

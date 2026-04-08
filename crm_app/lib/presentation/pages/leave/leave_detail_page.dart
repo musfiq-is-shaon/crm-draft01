@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/leave_model.dart';
 import '../../../data/repositories/leave_repository.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/rbac_provider.dart' show leaveManagementElevatedProvider;
 import '../../providers/leave_provider.dart';
+import '../../widgets/crm_card.dart';
 import 'leave_edit_page.dart';
 
 class LeaveDetailPage extends ConsumerStatefulWidget {
@@ -223,6 +226,103 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
     return _appliedFmt.format(t.toLocal());
   }
 
+  Future<void> _openLeaveAttachment(LeaveEntry entry) async {
+    final target = (entry.attachmentUrl ?? '').trim();
+    if (target.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No attachment available.')),
+      );
+      return;
+    }
+
+    if (target.startsWith('data:image/')) {
+      final comma = target.indexOf(',');
+      if (comma > 0) {
+        try {
+          final bytes = UriData.parse(target).contentAsBytes();
+          if (!mounted) return;
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => Dialog(
+              child: InteractiveViewer(
+                maxScale: 4,
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
+            ),
+          );
+          return;
+        } catch (_) {}
+      }
+    }
+
+    final uri = Uri.tryParse(target);
+    if (uri == null) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open this attachment.')),
+    );
+  }
+
+  Future<void> _downloadLeaveAttachment(LeaveEntry entry) async {
+    final target = (entry.attachmentUrl ?? '').trim();
+    if (target.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No attachment available.')),
+      );
+      return;
+    }
+    if (target.startsWith('data:')) {
+      try {
+        final uriData = UriData.parse(target);
+        final bytes = uriData.contentAsBytes();
+        final ext = switch (uriData.mimeType) {
+          'application/pdf' => 'pdf',
+          'image/jpeg' => 'jpg',
+          'image/png' => 'png',
+          'image/svg+xml' => 'svg',
+          _ => 'bin',
+        };
+        final suggestedName =
+            (entry.attachmentFileName?.trim().isNotEmpty ?? false)
+                ? entry.attachmentFileName!.trim()
+                : 'leave_attachment.$ext';
+        final savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save attachment',
+          fileName: suggestedName,
+          bytes: bytes,
+        );
+        if (!mounted) return;
+        if (savePath != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Attachment saved to $savePath')),
+          );
+        }
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save this attachment.')),
+        );
+      }
+      return;
+    }
+    final uri = Uri.tryParse(target);
+    if (uri == null) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not start attachment download.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bg = AppThemeColors.backgroundColor(context);
@@ -315,26 +415,73 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
     return ListView(
       padding: AppThemeColors.listPagePadding,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
+        CRMCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      typeLabel,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (approved
+                              ? Colors.green
+                              : rejected
+                                  ? Colors.red
+                                  : Theme.of(context).colorScheme.secondary)
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _prettyStatus(entry.status),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: approved
+                            ? Colors.green.shade800
+                            : rejected
+                                ? Colors.red.shade800
+                                : textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _dateLine(entry),
+                style: TextStyle(fontSize: 13, color: textSecondary),
+              ),
+            ],
           ),
+        ),
+        const SizedBox(height: 12),
+        CRMCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Details',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: textPrimary,
+                  color: textSecondary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _field('Leave Type', typeLabel, textPrimary, textSecondary),
               _divider(borderColor),
               _field('Status', _prettyStatus(entry.status), textPrimary, textSecondary),
@@ -357,6 +504,65 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
                 textPrimary,
                 textSecondary,
               ),
+              _divider(borderColor),
+              if ((entry.attachmentUrl?.trim().isNotEmpty ?? false) ||
+                  (entry.attachmentFileName?.trim().isNotEmpty ?? false))
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () => _openLeaveAttachment(entry),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.attach_file, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                (entry.attachmentFileName?.trim().isNotEmpty ??
+                                        false)
+                                    ? entry.attachmentFileName!.trim()
+                                    : 'View attachment',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: textPrimary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Icon(
+                              Icons.open_in_new,
+                              size: 16,
+                              color: textSecondary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _downloadLeaveAttachment(entry),
+                        icon: const Icon(Icons.download_rounded, size: 16),
+                        label: const Text('Download'),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                _field('Attachment', '—', textPrimary, textSecondary),
               if (entry.rejectReason != null && entry.rejectReason!.trim().isNotEmpty) ...[
                 _divider(borderColor),
                 _field(
@@ -393,7 +599,7 @@ class _LeaveDetailPageState extends ConsumerState<LeaveDetailPage> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         if (canEdit)
           FilledButton.icon(
             onPressed: () async {

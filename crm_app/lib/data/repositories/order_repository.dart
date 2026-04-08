@@ -57,7 +57,8 @@ class OrderRepository {
     if (assignToUserId != null && assignToUserId.isNotEmpty) {
       queryParams['assignToUserId'] = assignToUserId;
     }
-    if (assignTo != null && assignTo.isNotEmpty) queryParams['assignTo'] = assignTo;
+    if (assignTo != null && assignTo.isNotEmpty)
+      queryParams['assignTo'] = assignTo;
     if (status != null && status.isNotEmpty) queryParams['status'] = status;
     if (nextAction != null && nextAction.isNotEmpty) {
       queryParams['nextAction'] = nextAction;
@@ -110,10 +111,7 @@ class OrderRepository {
     for (final o in list) {
       if (o.id == id) return o;
     }
-    throw NotFoundException(
-      message: 'Order not found',
-      statusCode: 404,
-    );
+    throw NotFoundException(message: 'Order not found', statusCode: 404);
   }
 
   Future<Order> createOrder({
@@ -128,17 +126,26 @@ class OrderRepository {
     String? closedWonStatus,
     String? statusChangeNote,
     String? changedByUserId,
+    String? attachmentFileName,
+    String? attachmentData,
   }) async {
+    final attachments = <dynamic>[];
+    final name = attachmentFileName?.trim() ?? '';
+    final data64 = attachmentData?.trim() ?? '';
+    if (name.isNotEmpty && data64.isNotEmpty) {
+      attachments.add({'fileName': name, 'data': data64});
+    }
     final body = <String, dynamic>{
       'companyId': companyId,
       'salesId': salesId,
       'orderDetails': orderDetails,
       'revenue': revenue,
-      'orderConfirmationDate':
-          orderConfirmationDate?.toIso8601String().split('T')[0],
+      'orderConfirmationDate': orderConfirmationDate?.toIso8601String().split(
+        'T',
+      )[0],
       'deliveryDate': deliveryDate?.toIso8601String().split('T')[0],
       'assignTo': assignTo,
-      'attachments': <dynamic>[],
+      'attachments': attachments,
       'finalizeCloseWon': finalizeCloseWon,
       'closedWonStatus': closedWonStatus,
       'statusChangeNote': statusChangeNote,
@@ -146,10 +153,7 @@ class OrderRepository {
     };
     body.removeWhere((k, v) => v == null);
 
-    final response = await _apiClient.post(
-      AppConstants.orders,
-      data: body,
-    );
+    final response = await _apiClient.post(AppConstants.orders, data: body);
     return Order.fromJson(_asOrderMap(response.data));
   }
 
@@ -159,12 +163,14 @@ class OrderRepository {
     String? nextAction,
     DateTime? nextActionDate,
     String? forwardedTo,
+    List<dynamic>? attachments,
   }) async {
     final data = <String, dynamic>{
       'status': status,
       'nextAction': nextAction,
       'nextActionDate': nextActionDate?.toIso8601String().split('T')[0],
       'forwardedTo': forwardedTo,
+      'attachments': attachments,
     };
     data.removeWhere((k, v) => v == null);
 

@@ -1,6 +1,10 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/company_model.dart';
@@ -126,6 +130,14 @@ class OrderDetailPage extends ConsumerStatefulWidget {
 }
 
 class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
+  static const _kAllowedAttachmentExts = <String>[
+    'pdf',
+    'jpg',
+    'jpeg',
+    'png',
+    'svg',
+  ];
+
   Order? _order;
   String? _error;
   bool _loading = true;
@@ -135,6 +147,8 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
   String _nextActionKey = '';
   DateTime? _nextActionDate;
   String _forwardedToId = '';
+  String? _attachmentFileName;
+  String? _attachmentData;
 
   final TextEditingController _scopeController = TextEditingController();
 
@@ -159,6 +173,8 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     _nextActionDate = o.nextActionDate;
     _forwardedToId = (o.forwardedTo ?? '').trim();
     _scopeController.text = o.orderDetails ?? '';
+    _attachmentFileName = null;
+    _attachmentData = null;
   }
 
   bool get _dirty {
@@ -168,6 +184,10 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     if (_normalizeNextAction(o.nextAction) != _nextActionKey) return true;
     if (!_sameDate(o.nextActionDate, _nextActionDate)) return true;
     if ((o.forwardedTo ?? '') != _forwardedToId) return true;
+    if ((_attachmentData?.isNotEmpty ?? false) &&
+        (_attachmentFileName?.isNotEmpty ?? false)) {
+      return true;
+    }
     return false;
   }
 
@@ -220,12 +240,22 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     if (o == null || !_dirty) return;
     setState(() => _saving = true);
     try {
+      List<dynamic>? nextAttachments;
+      final newName = _attachmentFileName?.trim() ?? '';
+      final newData = _attachmentData?.trim() ?? '';
+      if (newName.isNotEmpty && newData.isNotEmpty) {
+        nextAttachments = [
+          ...(o.attachments ?? const <dynamic>[]),
+          {'fileName': newName, 'data': newData},
+        ];
+      }
       await ref.read(orderRepositoryProvider).patchOrder(
             id: o.id,
             status: _statusKey.isEmpty ? null : _statusKey,
             nextAction: _nextActionKey.isEmpty ? null : _nextActionKey,
             nextActionDate: _nextActionDate,
             forwardedTo: _forwardedToId.isEmpty ? '' : _forwardedToId,
+            attachments: nextAttachments,
           );
       await ref.read(ordersProvider.notifier).loadOrders();
       if (!mounted) return;
@@ -249,6 +279,178 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _pickAttachment() async {
+    final r = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: _kAllowedAttachmentExts,
+    );
+    if (r == null || r.files.isEmpty) return;
+    final f = r.files.first;
+    final bytes = f.bytes;
+    if (bytes == null) return;
+    final dataUrl = _buildDataUrlForFile(f.name, bytes);
+    if (dataUrl == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unsupported file type. Use PDF/JPG/JPEG/PNG/SVG.'),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _attachmentFileName = f.name;
+      _attachmentData = dataUrl;
+    });
+  }
+
+  String? _buildDataUrlForFile(String fileName, List<int> bytes) {
+    final ext = fileName.split('.').last.toLowerCase().trim();
+    final mime = switch (ext) {
+      'pdf' => 'application/pdf',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'svg' => 'image/svg+xml',
+      _ => '',
+    };
+    if (mime.isEmpty) return null;
+    final b64 = base64Encode(bytes);
+    return 'data:$mime;base64,$b64';
+  }
+
+  String _attachmentLabel(dynamic raw) {
+    if (raw is Map) {
+      final m = Map<String, dynamic>.from(raw);
+      final name = (m['fileName'] ?? m['name'] ?? '').toString().trim();
+      if (name.isNotEmpty) return name;
+      final url = (m['url'] ?? m['path'] ?? '').toString().trim();
+      if (url.isNotEmpty) return url;
+    }
+    final s = raw?.toString().trim() ?? '';
+    return s.isEmpty ? 'Attachment' : s;
+  }
+
+  String? _attachmentOpenTarget(dynamic raw) {
+    if (raw is Map) {
+      final m = Map<String, dynamic>.from(raw);
+      final v = (m['url'] ??
+              m['path'] ??
+              m['attachmentUrl'] ??
+              m['attachment_url'] ??
+              m['data'])
+          ?.toString()
+          .trim();
+      if (v != null && v.isNotEmpty) return v;
+    }
+    final s = raw?.toString().trim() ?? '';
+    if (s.startsWith('http://') ||
+        s.startsWith('https://') ||
+        s.startsWith('data:')) {
+      return s;
+    }
+    return null;
+  }
+
+  Future<void> _openAttachment(dynamic raw) async {
+    final target = _attachmentOpenTarget(raw);
+    if (target == null || target.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Attachment preview is unavailable.')),
+      );
+      return;
+    }
+
+    if (target.startsWith('data:image/')) {
+      final comma = target.indexOf(',');
+      if (comma > 0) {
+        try {
+          final bytes = base64Decode(target.substring(comma + 1));
+          if (!mounted) return;
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => Dialog(
+              child: InteractiveViewer(
+                maxScale: 4,
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
+            ),
+          );
+          return;
+        } catch (_) {}
+      }
+    }
+
+    final uri = Uri.tryParse(target);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open this attachment.')),
+    );
+  }
+
+  Future<void> _downloadAttachment(dynamic raw) async {
+    final target = _attachmentOpenTarget(raw);
+    if (target == null || target.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Attachment preview is unavailable.')),
+      );
+      return;
+    }
+    if (target.startsWith('data:')) {
+      try {
+        final uriData = UriData.parse(target);
+        final bytes = uriData.contentAsBytes();
+        final ext = switch (uriData.mimeType) {
+          'application/pdf' => 'pdf',
+          'image/jpeg' => 'jpg',
+          'image/png' => 'png',
+          'image/svg+xml' => 'svg',
+          _ => 'bin',
+        };
+        final suggestedName = (() {
+          if (raw is Map) {
+            final m = Map<String, dynamic>.from(raw);
+            final name = (m['fileName'] ?? m['name'] ?? '').toString().trim();
+            if (name.isNotEmpty) return name;
+          }
+          return 'order_attachment.$ext';
+        })();
+        final savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save attachment',
+          fileName: suggestedName,
+          bytes: bytes,
+        );
+        if (!mounted) return;
+        if (savePath != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Attachment saved to $savePath')),
+          );
+        }
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save this attachment.')),
+        );
+      }
+      return;
+    }
+    final uri = Uri.tryParse(target);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not start attachment download.')),
+    );
   }
 
   Future<Order> _enrichOrder(Order o) async {
@@ -578,6 +780,130 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                               maxLines: 4,
                               enabled: false,
                               disableAutofill: true,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          CRMCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Attachments',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                if ((_order!.attachments ?? const <dynamic>[])
+                                    .isNotEmpty) ...[
+                                  ...(_order!.attachments ?? const <dynamic>[])
+                                      .map(
+                                        (a) => Padding(
+                                          padding: const EdgeInsets.only(bottom: 6),
+                                          child: InkWell(
+                                            onTap: () => _openAttachment(a),
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 4,
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.attach_file,
+                                                        size: 16,
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Text(
+                                                          _attachmentLabel(a),
+                                                          style: TextStyle(
+                                                            fontSize: 13,
+                                                            color: textPrimary,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow:
+                                                              TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      Icon(
+                                                        Icons.open_in_new,
+                                                        size: 14,
+                                                        color: textSecondary,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.centerRight,
+                                                    child: OutlinedButton.icon(
+                                                      onPressed: () =>
+                                                          _downloadAttachment(a),
+                                                      icon: const Icon(
+                                                        Icons.download_rounded,
+                                                        size: 16,
+                                                      ),
+                                                      label: const Text(
+                                                        'Download',
+                                                      ),
+                                                      style: OutlinedButton.styleFrom(
+                                                        visualDensity:
+                                                            VisualDensity.compact,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 8,
+                                                            ),
+                                                        tapTargetSize:
+                                                            MaterialTapTargetSize
+                                                                .shrinkWrap,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  const SizedBox(height: 8),
+                                ],
+                                if ((_order!.attachments ?? const <dynamic>[])
+                                    .isEmpty) ...[
+                                  OutlinedButton.icon(
+                                    onPressed: _pickAttachment,
+                                    icon: const Icon(Icons.upload_file, size: 18),
+                                    label: Text(
+                                      _attachmentFileName == null ||
+                                              _attachmentFileName!.isEmpty
+                                          ? 'Add attachment'
+                                          : _attachmentFileName!,
+                                    ),
+                                  ),
+                                  if (_attachmentFileName != null &&
+                                      _attachmentFileName!.isNotEmpty)
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _attachmentFileName = null;
+                                            _attachmentData = null;
+                                          });
+                                        },
+                                        icon: const Icon(Icons.close, size: 16),
+                                        label: const Text('Clear'),
+                                      ),
+                                    ),
+                                ],
+                              ],
                             ),
                           ),
                           const SizedBox(height: 12),

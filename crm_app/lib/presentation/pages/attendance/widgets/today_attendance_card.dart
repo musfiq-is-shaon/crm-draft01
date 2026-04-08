@@ -7,6 +7,7 @@ import '../../../../core/services/app_haptics.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/attendance_provider.dart';
+import '../../../providers/dashboard_live_location_provider.dart';
 import '../../../providers/leave_provider.dart';
 import '../../../../data/models/leave_model.dart';
 import '../../../../core/errors/exceptions.dart';
@@ -39,7 +40,8 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
     with WidgetsBindingObserver {
   static const Duration _liveFirstFixTimeout = Duration(seconds: 22);
   static const Duration _liveGeocodeDebounce = Duration(milliseconds: 2000);
-
+  /// Check-in/out uses live fix when newer than this (same source as the card).
+  static const Duration _liveMaxAgeForSubmit = Duration(minutes: 2);
   StreamSubscription<Position>? _liveLocSub;
   Timer? _liveGeocodeDebounceTimer;
   Timer? _liveFirstFixTimer;
@@ -154,6 +156,27 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
         });
       },
     );
+  }
+
+  /// Silent refresh when user switches back to the Dashboard tab (see [dashboardVisitLiveLocationRefreshTickProvider]).
+  Future<void> _onDashboardVisitRefreshLiveLocation() async {
+    if (!mounted || _appInBackground || _liveRefreshing) return;
+    if (_liveWaitingFirstFix) return;
+    if (_liveLocationErrorKey == 'services_off' ||
+        _liveLocationErrorKey == 'permission_denied') {
+      return;
+    }
+    final pos =
+        await ref.read(locationServiceProvider).fetchHighAccuracyPosition();
+    if (!mounted || _appInBackground) return;
+    if (pos == null) return;
+    _liveFirstFixTimer?.cancel();
+    setState(() {
+      _livePosition = pos;
+      _liveWaitingFirstFix = false;
+      _liveLocationErrorKey = null;
+    });
+    _scheduleLiveGeocode(pos);
   }
 
   void _scheduleLiveGeocode(Position pos) {
@@ -316,25 +339,13 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              caption,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: textSecondary,
-                              ),
-                            ),
-                          ),
-                          if (hasMapTarget)
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: cs.primary.withValues(alpha: 0.85),
-                            ),
-                        ],
+                      Text(
+                        caption,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
                       ),
                       if (primary != null) ...[
                         const SizedBox(height: 2),
@@ -519,6 +530,10 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(dashboardVisitLiveLocationRefreshTickProvider, (previous, next) {
+      unawaited(_onDashboardVisitRefreshLiveLocation());
+    });
+
     final state = ref.watch(attendanceProvider);
     final todayAttendance = state.todayAttendance;
     final leavesAsync = ref.watch(myLeavesForAttendanceProvider);
@@ -909,7 +924,52 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
     );
   }
 
-  /// After hold completes: gets GPS, then submits (no confirmation dialog).
+  /// Prefer recent live fix from the card stream; else one silent GPS fix.
+  Future<({String coordinates, String placeLabel})?>
+  _resolveLocationForAttendanceSubmit(WidgetRef ref) async {
+    final live = _livePosition;
+    if (live != null) {
+      final age = DateTime.now().difference(live.timestamp);
+      if (age <= _liveMaxAgeForSubmit) {
+        final coordinates = LocationService.formatCoordinatesForStorage(
+          live.latitude,
+          live.longitude,
+        );
+        var place = _liveAddress?.trim() ?? '';
+        if (place.isEmpty) {
+          place = (await LocationService.placeLabelFromCoordinateString(
+                coordinates,
+              ))
+              .trim();
+        }
+        return (coordinates: coordinates, placeLabel: place);
+      }
+    }
+
+    final pos = await ref.read(locationServiceProvider).fetchHighAccuracyPosition();
+    if (!mounted) return null;
+    if (pos == null) return null;
+
+    setState(() {
+      _livePosition = pos;
+      _liveWaitingFirstFix = false;
+      _liveLocationErrorKey = null;
+    });
+    _liveFirstFixTimer?.cancel();
+    _scheduleLiveGeocode(pos);
+
+    final coordinates = LocationService.formatCoordinatesForStorage(
+      pos.latitude,
+      pos.longitude,
+    );
+    var place = (await LocationService.placeLabelFromCoordinateString(
+          coordinates,
+        ))
+        .trim();
+    return (coordinates: coordinates, placeLabel: place);
+  }
+
+  /// After hold completes: uses live location when fresh; otherwise silent fix (no dialogs).
   Future<void> _fetchLocationAndSubmit(
     BuildContext context,
     WidgetRef ref,
@@ -917,28 +977,10 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
     submit, {
     required bool isCheckIn,
   }) async {
-    final locationService = ref.read(locationServiceProvider);
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Getting your location...'),
-          ],
-        ),
-      ),
-    );
-
-    final captured = await locationService.getCurrentLocationForAttendance();
+    final resolved = await _resolveLocationForAttendanceSubmit(ref);
     if (!context.mounted) return;
-    Navigator.of(context).pop();
 
-    if (captured == null) {
+    if (resolved == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -953,7 +995,7 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
       return;
     }
 
-    await submit(captured.coordinatesString, captured.placeLabel);
+    await submit(resolved.coordinates, resolved.placeLabel);
     if (!context.mounted) return;
 
     if (isCheckIn) {

@@ -20,6 +20,14 @@ class LeaveApplyPage extends ConsumerStatefulWidget {
 }
 
 class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
+  static const _kAllowedAttachmentExts = <String>[
+    'pdf',
+    'jpg',
+    'jpeg',
+    'png',
+    'svg',
+  ];
+
   String? _leaveTypeId;
   LeaveApplyDurationMode _durationMode = LeaveApplyDurationMode.singleDay;
 
@@ -305,15 +313,43 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
   }
 
   Future<void> _pickAttachment() async {
-    final r = await FilePicker.platform.pickFiles(withData: true);
+    final r = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: _kAllowedAttachmentExts,
+    );
     if (r == null || r.files.isEmpty) return;
     final f = r.files.first;
     final bytes = f.bytes;
     if (bytes == null) return;
+    final dataUrl = _buildDataUrlForFile(f.name, bytes);
+    if (dataUrl == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unsupported file type. Use PDF/JPG/JPEG/PNG/SVG.'),
+        ),
+      );
+      return;
+    }
     setState(() {
       _attachmentFileName = f.name;
-      _attachmentData = base64Encode(bytes);
+      _attachmentData = dataUrl;
     });
+  }
+
+  String? _buildDataUrlForFile(String fileName, List<int> bytes) {
+    final ext = fileName.split('.').last.toLowerCase().trim();
+    final mime = switch (ext) {
+      'pdf' => 'application/pdf',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'svg' => 'image/svg+xml',
+      _ => '',
+    };
+    if (mime.isEmpty) return null;
+    final b64 = base64Encode(bytes);
+    return 'data:$mime;base64,$b64';
   }
 
   void _onDurationModeChanged(LeaveApplyDurationMode mode) {
@@ -864,6 +900,20 @@ class _LeaveApplyPageState extends ConsumerState<LeaveApplyPage> {
                     : _attachmentFileName!,
               ),
             ),
+            if (_attachmentFileName != null && _attachmentFileName!.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _attachmentFileName = null;
+                      _attachmentData = null;
+                    });
+                  },
+                  icon: const Icon(Icons.close, size: 16),
+                  label: const Text('Clear attachment'),
+                ),
+              ),
             const SizedBox(height: 28),
             FilledButton(
               onPressed:
