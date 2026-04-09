@@ -1035,7 +1035,10 @@ class AttendanceRecord {
         json['checkOutTime'] ?? json['check_out_time'],
       ),
       durationHours: _optionalRecordDouble(
-        json['durationHours'] ?? json['duration_hours'],
+        json['durationHours'] ??
+            json['duration_hours'] ??
+            json['totalHours'] ??
+            json['total_hours'],
       ),
       status: _attendanceRecordStatusFromJson(json),
       locationIn: _pickLocationFromJson(
@@ -1068,6 +1071,30 @@ class AttendanceRecord {
           ? User.fromJson(Map<String, dynamic>.from(json['user'] as Map))
           : null,
     );
+  }
+
+  /// API [durationHours] / total hours, or checkout − check-in when both times exist.
+  double? get resolvedWorkingHoursHours {
+    if (durationHours != null) return durationHours;
+    final ci = checkInTime;
+    final co = checkOutTime;
+    if (ci == null || co == null) return null;
+    final d = co.difference(ci);
+    if (d.isNegative) return null;
+    return d.inMicroseconds / Duration.microsecondsPerHour;
+  }
+
+  /// e.g. `7h 30m` for history tiles; null if the day has no completed span.
+  String? get workingHoursDisplayLabel {
+    final h = resolvedWorkingHoursHours;
+    if (h == null) return null;
+    final totalMin = (h * 60).round();
+    final hh = totalMin ~/ 60;
+    final m = totalMin % 60;
+    if (m == 0) {
+      return '${hh}h';
+    }
+    return '${hh}h ${m}m';
   }
 }
 

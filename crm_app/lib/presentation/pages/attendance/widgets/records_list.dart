@@ -226,18 +226,17 @@ class RecordTile extends StatelessWidget {
                     timeChip('Out', record.checkOutTime),
                   ],
                 ),
-                if (record.durationHours != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '${(record.durationHours! * 100).round() / 100}h',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                if (record.workingHoursDisplayLabel != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Working hours: ${record.workingHoursDisplayLabel}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
                     ),
                   ),
+                ],
                 if (hasLocations) ...[
                   const SizedBox(height: 12),
                   if (showLocIn)
