@@ -60,7 +60,9 @@ class OrderRepository {
     if (assignTo != null && assignTo.isNotEmpty) {
       queryParams['assignTo'] = assignTo;
     }
-    if (status != null && status.isNotEmpty) queryParams['status'] = status;
+    if (status != null && status.isNotEmpty) {
+      queryParams['status'] = status;
+    }
     if (nextAction != null && nextAction.isNotEmpty) {
       queryParams['nextAction'] = nextAction;
     }

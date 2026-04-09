@@ -59,8 +59,8 @@ class RbacMe {
 
   bool hasNav(String pageKey) => navPageKeys.contains(_normKey(pageKey));
 
-  /// Bottom-nav **Contacts** tab and contact CRUD — requires `contacts`, not `companies`.
-  /// Company-only RBAC is for sales/KAM flows; it must not show the Contacts tab.
+  /// **Contacts** in More menu and contact CRUD — requires `contacts`, not `companies`.
+  /// Company-only RBAC is for sales/KAM flows; it must not show Contacts for company-only roles.
   bool get canNavContacts => hasNav(RbacPageKey.contacts);
 
   /// Companies module (e.g. deals filters, KAM scope) — separate from the Contacts tab.

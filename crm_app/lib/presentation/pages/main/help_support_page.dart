@@ -50,7 +50,7 @@ class HelpSupportPage extends StatelessWidget {
     (
       title: 'Where are tasks, contacts, and deals?',
       body:
-          'Use the bottom navigation or the dashboard (home) shortcuts to open Tasks, Contacts, Companies, Sales, and Expenses. Your role may limit which areas you see.',
+          'Use the bottom navigation or the dashboard (home) shortcuts to open Tasks, Sales, Expenses, and Attendance. Contacts are under More when your role allows. Your role may limit which areas you see.',
     ),
     (
       title: 'Who can see my data?',

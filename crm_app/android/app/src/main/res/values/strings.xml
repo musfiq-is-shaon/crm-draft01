@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Must match the channel created in Dart ([NotificationService] → crm_fcm_default). -->
+    <string name="default_notification_channel_id">crm_fcm_default</string>
+</resources>

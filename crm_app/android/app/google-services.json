@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "405662165817",
+    "project_id": "crm-by-apptriangle",
+    "storage_bucket": "crm-by-apptriangle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405662165817:android:04e38fa0ae10f4b77fd6e8",
+        "android_client_info": {
+          "package_name": "app.atl.crm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrA3HxvRb1ZWSHJmEaNT0jFtsdJHTPpEo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

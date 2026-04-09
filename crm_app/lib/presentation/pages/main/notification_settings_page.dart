@@ -70,7 +70,7 @@ class NotificationSettingsPage extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            'Task deadlines and shift check-in reminders',
+                            'Task deadlines, shift check-in reminders, and server push (Firebase) when configured',
                             style: TextStyle(
                               fontSize: 12,
                               color: textSecondary,

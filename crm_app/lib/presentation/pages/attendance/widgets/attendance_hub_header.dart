@@ -6,7 +6,7 @@ import '../../../../data/models/shift_model.dart';
 import '../../../providers/attendance_provider.dart';
 import '../../../providers/shift_provider.dart';
 
-/// Top of More → Attendance: this week status counts and refresh.
+/// Top of Attendance hub: this week status counts and refresh.
 class AttendanceHubHeader extends ConsumerStatefulWidget {
   const AttendanceHubHeader({super.key});
 

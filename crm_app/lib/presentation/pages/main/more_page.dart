@@ -8,11 +8,11 @@ import '../../providers/shift_provider.dart';
 import '../../providers/rbac_provider.dart';
 import '../../providers/notifications_provider.dart';
 import '../../widgets/crm_card.dart';
+import '../contacts/contacts_list_page.dart';
 import '../settings/change_password_page.dart';
 import '../settings/settings_page.dart';
 import 'notification_settings_page.dart';
 import 'help_support_page.dart';
-import '../attendance/attendance_hub_page.dart';
 import '../leave/leave_list_page.dart';
 import '../profile/profile_page.dart';
 
@@ -25,9 +25,7 @@ class MorePage extends ConsumerWidget {
     final user = authState.user;
     final shiftAsync = ref.watch(userProfileShiftProvider);
     final me = ref.watch(rbacMeProvider);
-    final showAttendance =
-        me != null &&
-        (me.hasNav(RbacPageKey.attendance) || me.hasNav(RbacPageKey.hr));
+    final showContacts = me?.canNavContacts ?? false;
     final showLeave = me?.hasNav(RbacPageKey.leaves) ?? false;
 
     final bgColor = AppThemeColors.backgroundColor(context);
@@ -154,12 +152,12 @@ class MorePage extends ConsumerWidget {
             textTertiary: textTertiary,
             primaryColor: primaryColor,
             children: [
-              if (showAttendance)
+              if (showContacts)
                 _buildMenuItem(
                   context,
-                  icon: Icons.access_time_outlined,
-                  title: 'Attendance',
-                  subtitle: 'History & late reconciliation requests',
+                  icon: Icons.people_outline,
+                  title: 'Contacts',
+                  subtitle: 'People and companies',
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                   textTertiary: textTertiary,
@@ -168,7 +166,7 @@ class MorePage extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const AttendanceHubPage(),
+                        builder: (context) => const ContactsListPage(),
                       ),
                     );
                   },

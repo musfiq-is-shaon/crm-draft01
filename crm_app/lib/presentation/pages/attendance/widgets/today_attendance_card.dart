@@ -28,6 +28,16 @@ String _displaySource(String? server, String? localFallback) {
   return s;
 }
 
+String _formatWorkingHours(double hours) {
+  final totalMin = (hours * 60).round();
+  final h = totalMin ~/ 60;
+  final m = totalMin % 60;
+  if (m == 0) {
+    return '${h}h';
+  }
+  return '${h}h ${m}m';
+}
+
 class TodayAttendanceCardWidget extends ConsumerStatefulWidget {
   const TodayAttendanceCardWidget({super.key});
 
@@ -766,10 +776,10 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
                 textSecondary: textSecondary,
               ),
           ],
-          if (todayAttendance?.totalHours != null) ...[
+          if (todayAttendance?.resolvedWorkingHoursHours != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Total: ${(todayAttendance!.totalHours! * 100).round() / 100}h',
+              'Working hours today: ${_formatWorkingHours(todayAttendance!.resolvedWorkingHoursHours!)}',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -1136,7 +1146,7 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
                                   SnackBar(
                                     content: const Text(
                                       'Could not find your attendance record yet. '
-                                      'Try again in a moment, or add a reason from More → Attendance.',
+                                      'Try again in a moment, or add a reason from the Attendance tab.',
                                     ),
                                     backgroundColor: Theme.of(
                                       dialogCtx,
@@ -1176,7 +1186,7 @@ class _TodayAttendanceCardWidgetState extends ConsumerState<TodayAttendanceCardW
                                   ? e.message
                                   : e.toString();
                               final errText = detail.trim().isEmpty
-                                  ? 'Could not submit. Try More → Attendance.'
+                                  ? 'Could not submit. Try the Attendance tab.'
                                   : detail;
                               ScaffoldMessenger.of(dialogCtx).showSnackBar(
                                 SnackBar(

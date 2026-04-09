@@ -19,8 +19,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/sale_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/renewal_provider.dart';
+import '../../providers/shift_provider.dart';
 import '../../providers/task_provider.dart';
-import '../contacts/contacts_list_page.dart';
+import '../attendance/attendance_hub_page.dart';
 import '../dashboard/dashboard_page.dart';
 import '../expenses/expenses_list_page.dart';
 import '../sales/sales_list_page.dart';
@@ -65,7 +66,7 @@ class _ShellPageState extends ConsumerState<ShellPage>
   static const _kDashboard = 'dashboard';
   static const _kSales = 'sales';
   static const _kExpenses = 'expenses';
-  static const _kContacts = 'contacts';
+  static const _kAttendance = 'attendance';
   static const _kMore = 'more';
 
   Timer? _rbacForegroundPollTimer;
@@ -267,11 +268,13 @@ class _ShellPageState extends ConsumerState<ShellPage>
       ids
         ..add(_kSales)
         ..add(_kExpenses)
-        ..add(_kContacts);
+        ..add(_kAttendance);
     } else if (me != null) {
       if (me.hasNav(RbacPageKey.sales)) ids.add(_kSales);
       if (me.hasNav(RbacPageKey.expenses)) ids.add(_kExpenses);
-      if (me.canNavContacts) ids.add(_kContacts);
+      if (me.hasNav(RbacPageKey.attendance) || me.hasNav(RbacPageKey.hr)) {
+        ids.add(_kAttendance);
+      }
     }
 
     ids.add(_kMore);
@@ -287,8 +290,8 @@ class _ShellPageState extends ConsumerState<ShellPage>
           return SalesListPage();
         case _kExpenses:
           return ExpensesListPage();
-        case _kContacts:
-          return ContactsListPage();
+        case _kAttendance:
+          return const AttendanceHubPage();
         case _kMore:
           return MorePage();
         default:
@@ -338,11 +341,11 @@ class _ShellPageState extends ConsumerState<ShellPage>
             selectedIcon: Icons.receipt_long,
             label: 'Expense',
           );
-        case _kContacts:
+        case _kAttendance:
           return const _ShellNavItem(
-            icon: Icons.people_outline,
-            selectedIcon: Icons.people,
-            label: 'Contacts',
+            icon: Icons.access_time_outlined,
+            selectedIcon: Icons.access_time_filled,
+            label: 'Attendance',
           );
         case _kMore:
           return const _ShellNavItem(
@@ -411,8 +414,9 @@ class _ShellPageState extends ConsumerState<ShellPage>
         ref.read(ordersProvider.notifier).loadOrders();
         ref.read(renewalsProvider.notifier).loadRenewals();
         break;
-      case _kContacts:
-        ref.read(contactsProvider.notifier).loadContacts();
+      case _kAttendance:
+        ref.read(attendanceProvider.notifier).loadToday();
+        unawaited(ref.read(shiftProvider.notifier).loadShifts());
         break;
       case _kExpenses:
         break;

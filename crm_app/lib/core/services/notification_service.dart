@@ -82,7 +82,70 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
+    await _ensureAndroidNotificationChannels();
+
     _isInitialized = true;
+  }
+
+  /// Android 8+: channels must exist before FCM can post with [crm_fcm_default] (see AndroidManifest meta-data).
+  Future<void> _ensureAndroidNotificationChannels() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    final android = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return;
+
+    const channels = <AndroidNotificationChannel>[
+      AndroidNotificationChannel(
+        'crm_fcm_default',
+        'Push notifications',
+        description: 'Real-time alerts from your CRM (Firebase)',
+        importance: Importance.high,
+        playSound: true,
+        showBadge: true,
+      ),
+      AndroidNotificationChannel(
+        'general_channel',
+        'General notifications',
+        description: 'Other in-app notifications',
+        importance: Importance.high,
+        playSound: true,
+      ),
+    ];
+    for (final c in channels) {
+      await android.createNotificationChannel(c);
+    }
+  }
+
+  /// Foreground FCM: same channel id as [com.google.firebase.messaging.default_notification_channel_id] on Android.
+  Future<void> showFcmForegroundNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'crm_fcm_default',
+      'Push notifications',
+      channelDescription: 'Real-time alerts from your CRM (Firebase)',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title,
+      body,
+      details,
+      payload: payload,
+    );
   }
 
   /// Maps [tz.local] to the device IANA zone. Without this, the timezone
@@ -543,8 +606,8 @@ class NotificationService {
       'general_channel',
       'General Notifications',
       channelDescription: 'General app notifications',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
+      importance: Importance.high,
+      priority: Priority.high,
       icon: '@mipmap/ic_launcher',
     );
 

@@ -885,6 +885,17 @@ class TodayAttendance {
     return _statusNorm == 'checked_out' || _statusNorm == 'completed';
   }
 
+  /// Server [totalHours], or duration from [checkInTime] to [checkOutTime] when both exist.
+  double? get resolvedWorkingHoursHours {
+    if (totalHours != null) return totalHours;
+    final ci = checkInTime;
+    final co = checkOutTime;
+    if (ci == null || co == null) return null;
+    final d = co.difference(ci);
+    if (d.isNegative) return null;
+    return d.inMicroseconds / Duration.microsecondsPerHour;
+  }
+
   /// Checked in for today but checkout still required.
   bool get needsCheckOut {
     if (isAttendanceFlowCompleted) return false;

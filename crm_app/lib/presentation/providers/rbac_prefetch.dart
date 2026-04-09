@@ -7,7 +7,7 @@ import 'company_provider.dart';
 import 'user_provider.dart';
 
 /// Fetches shared lookup lists (companies, users) whenever RBAC grants a module
-/// that uses them in forms or filters — not only when the Contacts tab is visible.
+/// that uses them in forms or filters — not only when the user opens Contacts from More.
 Future<void> prefetchCrmLookupData(WidgetRef ref, RbacMe? me) async {
   if (me == null) return;
 

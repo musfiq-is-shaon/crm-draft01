@@ -10,7 +10,7 @@ import 'team_attendance_tab.dart';
 import 'widgets/attendance_hub_header.dart';
 import 'widgets/records_list.dart';
 
-/// More → Attendance: reconciliation request history, attendance records,
+/// Attendance hub (bottom nav or deep link): reconciliation request history, attendance records,
 /// (JWT admin or Attendance RBAC admin) **team attendance** (all users),
 /// and team reconciliation queue. Late reasons are submitted from the dashboard
 /// after a late check-in.

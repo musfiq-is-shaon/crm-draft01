@@ -1,18 +1,30 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app.dart';
-import 'core/services/notification_service.dart';
+import 'core/services/fcm_background.dart';
+import 'core/services/fcm_service.dart';
 import 'core/services/location_service.dart';
+import 'core/services/notification_service.dart';
+import 'firebase_options.dart';
 
 void main() async {
+  // Required before any plugin/async work (Firebase, FCM background handler, etc.).
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize notification service
+  // Must be registered before [runApp], as early as possible after binding init.
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   final notificationService = NotificationService();
   await notificationService.initialize();
   await notificationService.requestPermissions();
 
-  // Initialize location service
+  await FcmService.instance.initialize();
+
   final locationService = LocationService();
   await locationService.init();
 
