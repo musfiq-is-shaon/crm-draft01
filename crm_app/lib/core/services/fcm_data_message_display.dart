@@ -14,11 +14,46 @@ class FcmDataPayload {
   final String title;
   final String body;
 
-  /// Reads only [RemoteMessage.data] (no [RemoteMessage.notification]).
-  static FcmDataPayload? parse(RemoteMessage message) {
+  /// Prefer `data.title` / `data.body`, then [RemoteMessage.notification].
+  ///
+  /// **Foreground:** FCM often delivers title/body only on the `notification` object; `data`
+  /// may be empty. Without this fallback, nothing shows while the app is open even though
+  /// background works (system tray handles `notification` when not foreground).
+  static FcmDataPayload? parseForForeground(RemoteMessage message) {
+    return _parse(message, includeNotificationFallback: true);
+  }
+
+  /// Background isolate: only build a local notification for **data-only** pushes.
+  /// If `notification` is set, Android/iOS already show the tray banner — skip to avoid duplicates.
+  static FcmDataPayload? parseForBackgroundLocalNotification(RemoteMessage message) {
+    if (message.notification != null) {
+      return null;
+    }
+    return _parse(message, includeNotificationFallback: false);
+  }
+
+  static FcmDataPayload? _parse(
+    RemoteMessage message, {
+    required bool includeNotificationFallback,
+  }) {
     final d = message.data;
-    final title = d['title']?.toString().trim() ?? '';
-    final body = d['body']?.toString().trim() ?? '';
+    var title = d['title']?.toString().trim() ?? '';
+    var body = d['body']?.toString().trim() ?? '';
+    if (title.isEmpty) {
+      title = d['gcm.notification.title']?.toString().trim() ??
+          d['notification_title']?.toString().trim() ??
+          '';
+    }
+    if (body.isEmpty) {
+      body = d['gcm.notification.body']?.toString().trim() ??
+          d['notification_body']?.toString().trim() ??
+          '';
+    }
+    if (includeNotificationFallback && title.isEmpty && body.isEmpty) {
+      final n = message.notification;
+      title = n?.title?.trim() ?? '';
+      body = n?.body?.trim() ?? '';
+    }
     if (title.isEmpty && body.isEmpty) {
       return null;
     }
@@ -33,11 +68,12 @@ class FcmDataPayload {
 /// isolate because the system does not render a tray notification for data-only
 /// payloads (unlike messages that include a `notification` block).
 Future<void> showFcmDataMessageAsLocalNotification(RemoteMessage message) async {
-  final parsed = FcmDataPayload.parse(message);
+  final parsed = FcmDataPayload.parseForBackgroundLocalNotification(message);
   if (parsed == null) {
     if (kDebugMode) {
       debugPrint(
-        'FCM data message skipped: empty data.title/data.body keys=${message.data.keys}',
+        'FCM background: skip local show (data empty or OS handles notification) '
+        'keys=${message.data.keys} hasNotification=${message.notification != null}',
       );
     }
     return;

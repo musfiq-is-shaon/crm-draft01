@@ -30,10 +30,6 @@ class FcmService {
     final messaging = FirebaseMessaging.instance;
     await messaging.setAutoInitEnabled(true);
 
-    // Foreground: we show one notification via [NotificationService.showInstantNotification]
-    // in [_onForegroundMessage]. Do not also enable iOS system banners here or users get
-    // duplicate alerts when the payload includes a `notification` block.
-
     final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -74,9 +70,18 @@ class FcmService {
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
-    // Data-only contract: title/body live under [RemoteMessage.data] (not [RemoteMessage.notification]).
-    final parsed = FcmDataPayload.parse(message);
-    if (parsed == null) return;
+    // Prefer data fields; fall back to [RemoteMessage.notification] (common when server sends
+    // a notification block — background shows it automatically; foreground must show locally).
+    final parsed = FcmDataPayload.parseForForeground(message);
+    if (parsed == null) {
+      if (kDebugMode) {
+        debugPrint(
+          'FCM foreground: no title/body in data or notification '
+          'dataKeys=${message.data.keys}',
+        );
+      }
+      return;
+    }
 
     final notifications = NotificationService();
     await notifications.initialize();
