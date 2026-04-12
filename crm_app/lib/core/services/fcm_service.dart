@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../firebase_options.dart';
+import 'fcm_data_message_display.dart';
 import 'notification_service.dart';
 
 /// Firebase Cloud Messaging: real-time push alongside existing local notifications.
@@ -73,18 +74,16 @@ class FcmService {
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
-    final n = message.notification;
-    final data = message.data;
-    final title = n?.title ?? data['title']?.toString() ?? 'Notification';
-    final body = n?.body ?? data['body']?.toString() ?? '';
-    if (title.isEmpty && body.isEmpty) return;
+    // Data-only contract: title/body live under [RemoteMessage.data] (not [RemoteMessage.notification]).
+    final parsed = FcmDataPayload.parse(message);
+    if (parsed == null) return;
 
     final notifications = NotificationService();
     await notifications.initialize();
     await notifications.showFcmForegroundNotification(
-      title: title,
-      body: body,
-      payload: data.isNotEmpty ? data.toString() : message.messageId,
+      title: parsed.title,
+      body: parsed.body,
+      payload: message.data.isNotEmpty ? message.data.toString() : message.messageId,
     );
   }
 }

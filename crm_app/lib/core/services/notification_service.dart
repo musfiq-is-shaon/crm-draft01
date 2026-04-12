@@ -126,9 +126,10 @@ class NotificationService {
       'crm_fcm_default',
       'Push notifications',
       channelDescription: 'Real-time alerts from your CRM (Firebase)',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: Importance.max,
+      priority: Priority.max,
       icon: '@mipmap/ic_launcher',
+      visibility: NotificationVisibility.public,
     );
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
