@@ -19,11 +19,7 @@ class AppTheme {
     Color accent,
     ColorScheme? _, {
     bool amoledBlack = false,
-  }) =>
-      _theme(
-        _colorScheme(accent, Brightness.dark),
-        amoledBlack: amoledBlack,
-      );
+  }) => _theme(_colorScheme(accent, Brightness.dark), amoledBlack: amoledBlack);
 
   /// Full Material 3 tonal roles from [accent] only.
   ///
@@ -33,10 +29,7 @@ class AppTheme {
   /// wallpaper while **primary** followed the accent — inconsistent across
   /// the app. [DynamicColorBuilder] is still used so we can opt into
   /// wallpaper neutrals later if needed.
-  static ColorScheme _colorScheme(
-    Color accent,
-    Brightness brightness,
-  ) {
+  static ColorScheme _colorScheme(Color accent, Brightness brightness) {
     final seed = ColorScheme.fromSeed(
       seedColor: accent,
       brightness: brightness,
@@ -44,17 +37,13 @@ class AppTheme {
     );
 
     return seed
-        .copyWith(
-          primary: accent,
-          onPrimary: AppColors.onAccent(accent),
-        )
+        .copyWith(primary: accent, onPrimary: AppColors.onAccent(accent))
         .harmonized();
   }
 
   static ThemeData _theme(ColorScheme cs, {bool amoledBlack = false}) {
     final isDark = cs.brightness == Brightness.dark;
-    final scaffoldBg =
-        (isDark && amoledBlack) ? Colors.black : cs.surface;
+    final scaffoldBg = (isDark && amoledBlack) ? Colors.black : cs.surface;
 
     final base = ThemeData(
       useMaterial3: true,
@@ -73,29 +62,25 @@ class AppTheme {
       ),
     );
 
-    final textTheme = GoogleFonts.googleSansTextTheme(base.textTheme).apply(
-      bodyColor: cs.onSurface,
-      displayColor: cs.onSurface,
-    );
+    final textTheme = GoogleFonts.googleSansTextTheme(
+      base.textTheme,
+    ).apply(bodyColor: cs.onSurface, displayColor: cs.onSurface);
 
-    final primaryText =
-        GoogleFonts.googleSansTextTheme(base.primaryTextTheme).apply(
-      bodyColor: cs.onPrimary,
-      displayColor: cs.onPrimary,
-    );
+    final primaryText = GoogleFonts.googleSansTextTheme(
+      base.primaryTextTheme,
+    ).apply(bodyColor: cs.onPrimary, displayColor: cs.onPrimary);
 
     TextStyle gSans({
       double? fontSize,
       FontWeight? fontWeight,
       Color? color,
       double? height,
-    }) =>
-        GoogleFonts.googleSans(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: color,
-          height: height,
-        );
+    }) => GoogleFonts.googleSans(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+    );
 
     return base.copyWith(
       textTheme: textTheme,
@@ -132,18 +117,14 @@ class AppTheme {
         backgroundColor: scaffoldBg,
         surfaceTintColor: amoledBlack ? Colors.transparent : cs.surfaceTint,
         // Primary-tinted pill reads clearly on light surfaces and on OLED black.
-        indicatorColor: cs.primary.withValues(
-          alpha: isDark ? 0.24 : 0.14,
-        ),
+        indicatorColor: cs.primary.withValues(alpha: isDark ? 0.24 : 0.14),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return IconThemeData(color: cs.primary, size: 24);
           }
           return IconThemeData(
-            color: cs.onSurface.withValues(
-              alpha: isDark ? 0.72 : 0.58,
-            ),
+            color: cs.onSurface.withValues(alpha: isDark ? 0.72 : 0.58),
             size: 24,
           );
         }),
@@ -156,9 +137,7 @@ class AppTheme {
             );
           }
           return style.copyWith(
-            color: cs.onSurface.withValues(
-              alpha: isDark ? 0.78 : 0.62,
-            ),
+            color: cs.onSurface.withValues(alpha: isDark ? 0.78 : 0.62),
           );
         }),
       ),
@@ -174,9 +153,7 @@ class AppTheme {
         unselectedLabelStyle: gSans(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: cs.onSurface.withValues(
-            alpha: isDark ? 0.78 : 0.62,
-          ),
+          color: cs.onSurface.withValues(alpha: isDark ? 0.78 : 0.62),
         ),
       ),
       cardTheme: CardThemeData(
@@ -344,9 +321,7 @@ class AppTheme {
         space: 1,
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(
-          foregroundColor: cs.onSurfaceVariant,
-        ),
+        style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: cs.surfaceContainerHigh,
@@ -364,9 +339,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          side: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.55),
-          ),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
