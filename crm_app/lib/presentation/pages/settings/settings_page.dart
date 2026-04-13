@@ -188,7 +188,7 @@ class SettingsPage extends ConsumerWidget {
                   textSecondary: textSecondary,
                   primaryColor: primaryColor,
                   trailing: Text(
-                    '1.0.0',
+                    '1.2.3',
                     style: TextStyle(color: textSecondary, fontSize: 14),
                   ),
                 ),

@@ -11,6 +11,11 @@ import 'fcm_data_message_display.dart';
 /// **Data-only** messages (`data.title` / `data.body`, no `notification` block) do not
 /// show a system notification by themselves — we display them with
 /// [showFcmDataMessageAsLocalNotification] (same as production apps using silent push + local UI).
+///
+/// **Server (FCM HTTP v1):** For delivery while the app is **terminated**, Android requires
+/// `android.priority` = **HIGH** (and avoid "force stop" / OEM battery kill). Notification
+/// payloads (`notification` block) are shown by the OS when the app is killed; data-only
+/// relies on this handler + local notifications.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();

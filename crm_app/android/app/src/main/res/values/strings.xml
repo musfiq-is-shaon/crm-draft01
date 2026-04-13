@@ -2,4 +2,6 @@
 <resources>
     <!-- Must match the channel created in Dart ([NotificationService] → crm_fcm_default). -->
     <string name="default_notification_channel_id">crm_fcm_default</string>
+    <string name="default_notification_channel_name">Push notifications</string>
+    <string name="default_notification_channel_description">Real-time alerts from your CRM (Firebase)</string>
 </resources>

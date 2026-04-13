@@ -60,18 +60,11 @@ class _TeamAttendanceTabState extends ConsumerState<TeamAttendanceTab> {
       List<AttendanceRecord> rows;
       if (_period == 'week') {
         final range = sundayWeekRangeContaining(DateTime.now());
-        try {
-          rows = await repo.getAllAttendance(
-            dateFrom: range.dateFrom,
-            dateTo: range.dateTo,
-            userId: _filterUserId,
-          );
-        } catch (_) {
-          rows = await repo.getAllAttendance(
-            period: _period,
-            userId: _filterUserId,
-          );
-        }
+        rows = await repo.getAllAttendance(
+          dateFrom: range.dateFrom,
+          dateTo: range.dateTo,
+          userId: _filterUserId,
+        );
         rows = filterAttendanceRecordsToYmdRange(
           rows,
           range.dateFrom,
@@ -79,18 +72,11 @@ class _TeamAttendanceTabState extends ConsumerState<TeamAttendanceTab> {
         );
       } else if (_period == 'last_week') {
         final range = previousSundayWeekRange(DateTime.now());
-        try {
-          rows = await repo.getAllAttendance(
-            dateFrom: range.dateFrom,
-            dateTo: range.dateTo,
-            userId: _filterUserId,
-          );
-        } catch (_) {
-          rows = await repo.getAllAttendance(
-            period: _period,
-            userId: _filterUserId,
-          );
-        }
+        rows = await repo.getAllAttendance(
+          dateFrom: range.dateFrom,
+          dateTo: range.dateTo,
+          userId: _filterUserId,
+        );
         rows = filterAttendanceRecordsToYmdRange(
           rows,
           range.dateFrom,

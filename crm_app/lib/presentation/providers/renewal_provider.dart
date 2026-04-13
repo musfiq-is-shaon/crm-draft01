@@ -9,17 +9,42 @@ import '../../data/repositories/renewal_repository.dart';
 import '../../data/repositories/user_repository.dart'
     show UserRepository, userRepositoryProvider;
 
+/// Query filters supported by `GET /api/renewals` (see [RenewalRepository.getRenewals]).
+class RenewalListFilters {
+  const RenewalListFilters({
+    this.companyId,
+    this.kamUserId,
+    this.source,
+  });
+
+  final String? companyId;
+  final String? kamUserId;
+  final String? source;
+
+  static const empty = RenewalListFilters();
+
+  int get activeCount {
+    var n = 0;
+    if (companyId != null && companyId!.trim().isNotEmpty) n++;
+    if (kamUserId != null && kamUserId!.trim().isNotEmpty) n++;
+    if (source != null && source!.trim().isNotEmpty) n++;
+    return n;
+  }
+}
+
 class RenewalsState {
   final List<Renewal> renewals;
   final bool isLoading;
   final String? error;
   final String? listSearch;
+  final RenewalListFilters listFilters;
 
   const RenewalsState({
     this.renewals = const [],
     this.isLoading = false,
     this.error,
     this.listSearch,
+    this.listFilters = RenewalListFilters.empty,
   });
 
   RenewalsState copyWith({
@@ -28,12 +53,14 @@ class RenewalsState {
     String? error,
     String? listSearch,
     bool clearListSearch = false,
+    RenewalListFilters? listFilters,
   }) {
     return RenewalsState(
       renewals: renewals ?? this.renewals,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       listSearch: clearListSearch ? null : (listSearch ?? this.listSearch),
+      listFilters: listFilters ?? this.listFilters,
     );
   }
 }
@@ -53,8 +80,15 @@ class RenewalsNotifier extends StateNotifier<RenewalsState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final search = state.listSearch?.trim();
+      final f = state.listFilters;
       final renewals = await _renewalRepository.getRenewals(
         search: search != null && search.isNotEmpty ? search : null,
+        companyId: f.companyId?.trim().isNotEmpty == true
+            ? f.companyId!.trim()
+            : null,
+        kamUserId:
+            f.kamUserId?.trim().isNotEmpty == true ? f.kamUserId!.trim() : null,
+        source: f.source?.trim().isNotEmpty == true ? f.source!.trim() : null,
       );
 
       final companyIds = <String>{};
@@ -102,6 +136,16 @@ class RenewalsNotifier extends StateNotifier<RenewalsState> {
     } else {
       state = state.copyWith(listSearch: trimmed, clearListSearch: false);
     }
+    await loadRenewals();
+  }
+
+  Future<void> setListFiltersAndReload(RenewalListFilters filters) async {
+    state = state.copyWith(listFilters: filters);
+    await loadRenewals();
+  }
+
+  Future<void> clearListFiltersAndReload() async {
+    state = state.copyWith(listFilters: RenewalListFilters.empty);
     await loadRenewals();
   }
 }

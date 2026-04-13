@@ -13,6 +13,19 @@ class FcmService {
 
   bool _started = false;
 
+  /// Refresh in-app notification list (and optionally show a tray from API) when FCM arrives
+  /// while the app is foregrounded — set from [CRMApp] with Riverpod [WidgetRef].
+  Future<void> Function(RemoteMessage message, bool showedTrayFromPayload)?
+      _foregroundSideEffects;
+
+  /// Register [CRMApp] callback (e.g. sync `/api/notifications` for attendance alerts). Clear on logout.
+  void setForegroundSideEffects(
+    Future<void> Function(RemoteMessage message, bool showedTrayFromPayload)?
+        callback,
+  ) {
+    _foregroundSideEffects = callback;
+  }
+
   /// Returns false if Firebase failed to start (app still runs on local notifications only).
   Future<bool> initialize() async {
     if (_started) return true;
@@ -41,10 +54,11 @@ class FcmService {
     }
 
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
       if (kDebugMode) {
         debugPrint('FCM opened app: ${message.messageId}');
       }
+      await _foregroundSideEffects?.call(message, false);
     });
 
     messaging.onTokenRefresh.listen((token) {
@@ -69,26 +83,35 @@ class FcmService {
     return true;
   }
 
+  /// Cold start: user tapped a notification that launched the app. Call after auth + [setForegroundSideEffects].
+  Future<void> handleInitialMessageOpenedApp() async {
+    final initial = await FirebaseMessaging.instance.getInitialMessage();
+    if (initial == null) return;
+    await _foregroundSideEffects?.call(initial, false);
+  }
+
   Future<void> _onForegroundMessage(RemoteMessage message) async {
-    // Prefer data fields; fall back to [RemoteMessage.notification] (common when server sends
-    // a notification block — background shows it automatically; foreground must show locally).
+    // Prefer data fields; fall back to [RemoteMessage.notification].
     final parsed = FcmDataPayload.parseForForeground(message);
-    if (parsed == null) {
-      if (kDebugMode) {
-        debugPrint(
-          'FCM foreground: no title/body in data or notification '
-          'dataKeys=${message.data.keys}',
-        );
-      }
-      return;
+    var showedTray = false;
+    if (parsed != null) {
+      final notifications = NotificationService();
+      await notifications.initialize();
+      await notifications.showFcmForegroundNotification(
+        title: parsed.title,
+        body: parsed.body,
+        payload: message.data.isNotEmpty ? message.data.toString() : message.messageId,
+      );
+      showedTray = true;
+    } else if (kDebugMode) {
+      debugPrint(
+        'FCM foreground: no title/body in payload; will sync API '
+        'dataKeys=${message.data.keys}',
+      );
     }
 
-    final notifications = NotificationService();
-    await notifications.initialize();
-    await notifications.showFcmForegroundNotification(
-      title: parsed.title,
-      body: parsed.body,
-      payload: message.data.isNotEmpty ? message.data.toString() : message.messageId,
-    );
+    // Always: refresh `/api/notifications` so attendance rows created server-side appear;
+    // if FCM was silent, show tray from fetched [NotificationItem].
+    await _foregroundSideEffects?.call(message, showedTray);
   }
 }

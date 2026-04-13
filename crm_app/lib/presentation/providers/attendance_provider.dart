@@ -78,7 +78,8 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   /// Last user id we merged local fallbacks for; used to drop stale locals on account switch.
   String? _lastLoadedUserId;
 
-  AttendanceNotifier(this._repository, this.ref) : super(const AttendanceState()) {
+  AttendanceNotifier(this._repository, this.ref)
+    : super(const AttendanceState()) {
     // Do not call [loadToday] here — it races with [userProfileShiftProvider] (which watches
     // [attendanceProvider]) and can trigger Riverpod [CircularDependencyError]. Shell/dashboard
     // / hub pages call [loadToday] explicitly after auth + tab setup.
@@ -110,8 +111,8 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       final dateChanged =
           prevDate.isNotEmpty && newDate.isNotEmpty && prevDate != newDate;
 
-      final userChanged = _lastLoadedUserId != null &&
-          _lastLoadedUserId != currentUserId;
+      final userChanged =
+          _lastLoadedUserId != null && _lastLoadedUserId != currentUserId;
 
       final serverIn = today.locationIn?.trim() ?? '';
       final serverOut = today.locationOut?.trim() ?? '';
@@ -192,14 +193,10 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
       List<AttendanceRecord> records;
       if (period == 'week') {
         final range = sundayWeekRangeContaining(DateTime.now());
-        try {
-          records = await _repository.getRecords(
-            dateFrom: range.dateFrom,
-            dateTo: range.dateTo,
-          );
-        } catch (_) {
-          records = await _repository.getRecords(period: 'week');
-        }
+        records = await _repository.getRecords(
+          dateFrom: range.dateFrom,
+          dateTo: range.dateTo,
+        );
         records = filterAttendanceRecordsToYmdRange(
           records,
           range.dateFrom,
@@ -485,21 +482,18 @@ class AttendanceWeekRollup {
 
 final attendanceWeekRollupProvider =
     FutureProvider.autoDispose<AttendanceWeekRollup>((ref) async {
-  final repo = ref.read(attendanceRepositoryProvider);
-  final range = sundayWeekRangeContaining(DateTime.now());
-  List<AttendanceRecord> rows;
-  try {
-    rows = await repo.getRecords(
-      dateFrom: range.dateFrom,
-      dateTo: range.dateTo,
-    );
-  } catch (_) {
-    rows = await repo.getRecords(period: 'week');
-  }
-  rows = filterAttendanceRecordsToYmdRange(
-    rows,
-    range.dateFrom,
-    range.dateTo,
-  );
-  return AttendanceWeekRollup.fromRecords(rows);
-});
+      final repo = ref.read(attendanceRepositoryProvider);
+      final range = sundayWeekRangeContaining(DateTime.now());
+      // Always Sun–Sat via explicit dates. Do not fall back to `period=week` — APIs often
+      // use ISO (Mon–Sun), which misaligns the hub “This week” counts with the history filter.
+      final rows = await repo.getRecords(
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+      );
+      final filtered = filterAttendanceRecordsToYmdRange(
+        rows,
+        range.dateFrom,
+        range.dateTo,
+      );
+      return AttendanceWeekRollup.fromRecords(filtered);
+    });

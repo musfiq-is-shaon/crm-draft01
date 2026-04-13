@@ -194,7 +194,7 @@ class _SalesFunnelTabState extends ConsumerState<SalesFunnelTab>
               ref.read(salesProvider.notifier).setListSearchAndReload(null);
               setState(() {});
             },
-            onFilterTap: () => _showFilterDialog(
+            onFilterTap: () => _showFilterSheet(
               context,
               companiesState,
               usersState,
@@ -478,7 +478,7 @@ class _SalesFunnelTabState extends ConsumerState<SalesFunnelTab>
     }
   }
 
-  void _showFilterDialog(
+  void _showFilterSheet(
     BuildContext context,
     CompaniesState companiesState,
     UsersState usersState,
@@ -486,10 +486,9 @@ class _SalesFunnelTabState extends ConsumerState<SalesFunnelTab>
     final surfaceColor = AppThemeColors.surfaceColor(context);
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
-        final borderColor = AppThemeColors.borderColor(context);
+    final borderColor = AppThemeColors.borderColor(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
 
-    // Local state for the dialog
     String? localSelectedStatus = _selectedStatus;
     String? localSelectedCategory = _selectedCategory;
     String? localSelectedCompanyId = _selectedCompanyId;
@@ -500,521 +499,478 @@ class _SalesFunnelTabState extends ConsumerState<SalesFunnelTab>
     DateTime? localStartDate = _startDate;
     DateTime? localEndDate = _endDate;
 
-    showDialog(
+    InputBorder fieldBorder() => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: borderColor),
+        );
+
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setModalState) {
-          final screenWidth = MediaQuery.of(context).size.width;
-          final dialogWidth = screenWidth > 500 ? 450.0 : screenWidth * 0.9;
-
-          return Dialog(
-            backgroundColor: surfaceColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+      isScrollControlled: true,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setModalState) => SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom:
+                  AppSpacing.md + MediaQuery.of(context).viewInsets.bottom,
             ),
-            child: SizedBox(
-              width: dialogWidth > 400 ? 500 : dialogWidth * 0.95,
-              child: Padding(
-                padding: AppThemeColors.pagePaddingAll,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Filter & Sort Deals',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: textPrimary,
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.close, color: textSecondary),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
                       ),
-                      const SizedBox(height: 16),
-
-                      // Sort Section
-                      Text(
-                        'Sort By',
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        _searchDebounce?.cancel();
+                        setState(() {
+                          _selectedStatus = null;
+                          _selectedCategory = null;
+                          _selectedCompanyId = null;
+                          _selectedRevenueRange = null;
+                          _selectedKamUserId = null;
+                          _startDate = null;
+                          _endDate = null;
+                          _sortBy = 'createdAt';
+                          _sortAscending = false;
+                        });
+                        _searchController.clear();
+                        ref.read(salesProvider.notifier).clearFilters();
+                        await ref
+                            .read(salesProvider.notifier)
+                            .clearListApiFiltersAndReload();
+                        if (sheetContext.mounted) {
+                          Navigator.pop(sheetContext);
+                        }
+                      },
+                      child: Text(
+                        'Clear All',
                         style: TextStyle(
-                          fontSize: 14,
+                          color: primaryColor,
                           fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: localSortBy,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'createdAt',
-                            child: Text('Date Created'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'expectedClosingDate',
-                            child: Text('Closing Date'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'expectedRevenue',
-                            child: Text('Revenue'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() => localSortBy = value!);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Status Filter
-                      Text(
-                        'Status',
-                        style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: localSelectedStatus,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          hintText: 'All Statuses',
-                          hintStyle: TextStyle(color: textSecondary),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                        ),
-                        dropdownColor: surfaceColor,
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('All')),
-                          ..._pipelineStatuses.map(
-                            (s) => DropdownMenuItem(
-                              value: s,
-                              child: Text(_dealTabLabel(s)),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() => localSelectedStatus = value);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Category Filter
-                      Text(
-                        'Category',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: localSelectedCategory,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          hintText: 'All Categories',
-                          hintStyle: TextStyle(color: textSecondary),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                        ),
-                        dropdownColor: surfaceColor,
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('All')),
-                          DropdownMenuItem(value: 'hot', child: Text('Hot')),
-                          DropdownMenuItem(value: 'warm', child: Text('Warm')),
-                          DropdownMenuItem(value: 'cold', child: Text('Cold')),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() => localSelectedCategory = value);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Company Filter
-                      Text(
-                        'Company',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: surfaceColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: SearchableDropdown<Company>(
-                          items: companiesState.companies,
-                          value: localSelectedCompanyId != null
-                              ? companiesState.companies
-                                    .where(
-                                      (c) => c.id == localSelectedCompanyId,
-                                    )
-                                    .firstOrNull
-                              : null,
-                          hintText: 'All Companies',
-                          labelText: 'Company',
-                          dropdownColor: surfaceColor,
-                          textColor: textPrimary,
-                          hintColor: textSecondary,
-                          itemLabelBuilder: (company) => company.name,
-                          onChanged: (company) {
-                            setModalState(
-                              () => localSelectedCompanyId = company?.id,
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Revenue Range Filter
-                      Text(
-                        'Revenue Range',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: localSelectedRevenueRange,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          hintText: 'All Ranges',
-                          hintStyle: TextStyle(color: textSecondary),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                        ),
-                        dropdownColor: surfaceColor,
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('All')),
-                          DropdownMenuItem(
-                            value: '0-1000',
-                            child: Text(
-                              '${AppConstants.currencySymbol}0 - '
-                              '${AppConstants.currencySymbol}1K',
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: '1000-5000',
-                            child: Text(
-                              '${AppConstants.currencySymbol}1K - '
-                              '${AppConstants.currencySymbol}5K',
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: '5000-10000',
-                            child: Text(
-                              '${AppConstants.currencySymbol}5K - '
-                              '${AppConstants.currencySymbol}10K',
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: '10000+',
-                            child: Text('${AppConstants.currencySymbol}10K+'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setModalState(
-                            () => localSelectedRevenueRange = value,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // KAM Filter
-                      Text(
-                        'Key Account Manager (KAM)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: surfaceColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: SearchableDropdown<User>(
-                          items: usersState.users,
-                          value: localSelectedKamUserId != null
-                              ? usersState.users
-                                    .where(
-                                      (u) => u.id == localSelectedKamUserId,
-                                    )
-                                    .firstOrNull
-                              : null,
-                          hintText: 'All KAMs',
-                          labelText: 'Key Account Manager (KAM)',
-                          dropdownColor: surfaceColor,
-                          textColor: textPrimary,
-                          hintColor: textSecondary,
-                          itemLabelBuilder: (user) =>
-                              '${user.name} (${user.email})',
-                          onChanged: (user) {
-                            setModalState(
-                              () => localSelectedKamUserId = user?.id,
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Date Range Filter
-                      Text(
-                        'Date Range (Closing Date)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: localStartDate ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2030),
-                                );
-                                if (date != null) {
-                                  setModalState(() => localStartDate = date);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  hintText: 'Start Date',
-                                  hintStyle: TextStyle(color: textSecondary),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: borderColor),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: borderColor),
-                                  ),
-                                ),
-                                child: Text(
-                                  localStartDate != null
-                                      ? '${localStartDate!.day}/${localStartDate!.month}/${localStartDate!.year}'
-                                      : 'Start Date',
-                                  style: TextStyle(color: textPrimary),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: localEndDate ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2030),
-                                );
-                                if (date != null) {
-                                  setModalState(() => localEndDate = date);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  hintText: 'End Date',
-                                  hintStyle: TextStyle(color: textSecondary),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: borderColor),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: borderColor),
-                                  ),
-                                ),
-                                child: Text(
-                                  localEndDate != null
-                                      ? '${localEndDate!.day}/${localEndDate!.month}/${localEndDate!.year}'
-                                      : 'End Date',
-                                  style: TextStyle(color: textPrimary),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: AppSpacing.lg),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () async {
-                                _searchDebounce?.cancel();
-                                setState(() {
-                                  _selectedStatus = null;
-                                  _selectedCategory = null;
-                                  _selectedCompanyId = null;
-                                  _selectedRevenueRange = null;
-                                  _selectedKamUserId = null;
-                                  _startDate = null;
-                                  _endDate = null;
-                                  _sortBy = 'createdAt';
-                                  _sortAscending = false;
-                                });
-                                _searchController.clear();
-                                ref.read(salesProvider.notifier).clearFilters();
-                                await ref
-                                    .read(salesProvider.notifier)
-                                    .clearListApiFiltersAndReload();
-                                if (context.mounted) Navigator.pop(context);
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: textPrimary,
-                                side: BorderSide(color: borderColor),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text('Clear All'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                setState(() {
-                                  _selectedStatus = localSelectedStatus;
-                                  _selectedCategory = localSelectedCategory;
-                                  _selectedCompanyId = localSelectedCompanyId;
-                                  _selectedRevenueRange =
-                                      localSelectedRevenueRange;
-                                  _selectedKamUserId = localSelectedKamUserId;
-                                  _startDate = localStartDate;
-                                  _endDate = localEndDate;
-                                  _sortBy = localSortBy;
-                                  _sortAscending = localSortAscending;
-                                });
-                                ref
-                                    .read(salesProvider.notifier)
-                                    .setStatusFilter(localSelectedStatus);
-                                ref
-                                    .read(salesProvider.notifier)
-                                    .setCategoryFilter(localSelectedCategory);
-
-                                final allIdx = _pipelineStatuses.length;
-                                final st = localSelectedStatus;
-                                final tabIdx = st == null
-                                    ? allIdx
-                                    : _pipelineStatuses.indexOf(st);
-                                final safeIdx = (tabIdx >= 0 ? tabIdx : allIdx)
-                                    .clamp(0, _tabController.length - 1);
-                                if (_tabController.index != safeIdx) {
-                                  _tabController.animateTo(safeIdx);
-                                }
-
-                                await ref
-                                    .read(salesProvider.notifier)
-                                    .setListCompanyCategoryAndReload(
-                                      companyId: localSelectedCompanyId,
-                                      category: localSelectedCategory,
-                                    );
-                                if (context.mounted) Navigator.pop(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                foregroundColor:
-                                    Theme.of(context).colorScheme.onPrimary,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text('Apply Filters'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Sort by',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
                   ),
                 ),
-              ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: localSortBy,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: fieldBorder(),
+                    enabledBorder: fieldBorder(),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'createdAt',
+                      child: Text('Date created'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'expectedClosingDate',
+                      child: Text('Closing date'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'expectedRevenue',
+                      child: Text('Revenue'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setModalState(() => localSortBy = value!);
+                  },
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Status',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: localSelectedStatus,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'All statuses',
+                    hintStyle: TextStyle(color: textSecondary),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: fieldBorder(),
+                    enabledBorder: fieldBorder(),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('All')),
+                    ..._pipelineStatuses.map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(_dealTabLabel(s)),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setModalState(() => localSelectedStatus = value);
+                  },
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Category',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: localSelectedCategory,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'All categories',
+                    hintStyle: TextStyle(color: textSecondary),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: fieldBorder(),
+                    enabledBorder: fieldBorder(),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('All')),
+                    DropdownMenuItem(value: 'hot', child: Text('Hot')),
+                    DropdownMenuItem(value: 'warm', child: Text('Warm')),
+                    DropdownMenuItem(value: 'cold', child: Text('Cold')),
+                  ],
+                  onChanged: (value) {
+                    setModalState(() => localSelectedCategory = value);
+                  },
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Company',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: SearchableDropdown<Company>(
+                    items: companiesState.companies,
+                    value: localSelectedCompanyId != null
+                        ? companiesState.companies
+                            .where((c) => c.id == localSelectedCompanyId)
+                            .firstOrNull
+                        : null,
+                    hintText: 'All companies',
+                    labelText: '',
+                    dropdownColor: surfaceColor,
+                    textColor: textPrimary,
+                    hintColor: textSecondary,
+                    itemLabelBuilder: (company) => company.name,
+                    onChanged: (company) {
+                      setModalState(
+                        () => localSelectedCompanyId = company?.id,
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Revenue range',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: localSelectedRevenueRange,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'All ranges',
+                    hintStyle: TextStyle(color: textSecondary),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: fieldBorder(),
+                    enabledBorder: fieldBorder(),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('All')),
+                    DropdownMenuItem(
+                      value: '0-1000',
+                      child: Text(
+                        '${AppConstants.currencySymbol}0 - '
+                        '${AppConstants.currencySymbol}1K',
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: '1000-5000',
+                      child: Text(
+                        '${AppConstants.currencySymbol}1K - '
+                        '${AppConstants.currencySymbol}5K',
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: '5000-10000',
+                      child: Text(
+                        '${AppConstants.currencySymbol}5K - '
+                        '${AppConstants.currencySymbol}10K',
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: '10000+',
+                      child: Text('${AppConstants.currencySymbol}10K+'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setModalState(() => localSelectedRevenueRange = value);
+                  },
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'KAM',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: SearchableDropdown<User>(
+                    items: usersState.users,
+                    value: localSelectedKamUserId != null
+                        ? usersState.users
+                            .where((u) => u.id == localSelectedKamUserId)
+                            .firstOrNull
+                        : null,
+                    hintText: 'Search by name or email...',
+                    labelText: '',
+                    dropdownColor: surfaceColor,
+                    textColor: textPrimary,
+                    hintColor: textSecondary,
+                    itemLabelBuilder: (user) =>
+                        '${user.name} (${user.email})',
+                    onChanged: (user) {
+                      setModalState(() => localSelectedKamUserId = user?.id);
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Closing date',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _salesFunnelDateFilterButton(
+                        context: context,
+                        label: 'From',
+                        date: localStartDate,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                        surfaceColor: surfaceColor,
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: localStartDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (date != null) {
+                            setModalState(() => localStartDate = date);
+                          }
+                        },
+                        onClear: () =>
+                            setModalState(() => localStartDate = null),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _salesFunnelDateFilterButton(
+                        context: context,
+                        label: 'To',
+                        date: localEndDate,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                        surfaceColor: surfaceColor,
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: localEndDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (date != null) {
+                            setModalState(() => localEndDate = date);
+                          }
+                        },
+                        onClear: () => setModalState(() => localEndDate = null),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      setState(() {
+                        _selectedStatus = localSelectedStatus;
+                        _selectedCategory = localSelectedCategory;
+                        _selectedCompanyId = localSelectedCompanyId;
+                        _selectedRevenueRange = localSelectedRevenueRange;
+                        _selectedKamUserId = localSelectedKamUserId;
+                        _startDate = localStartDate;
+                        _endDate = localEndDate;
+                        _sortBy = localSortBy;
+                        _sortAscending = localSortAscending;
+                      });
+                      ref
+                          .read(salesProvider.notifier)
+                          .setStatusFilter(localSelectedStatus);
+                      ref
+                          .read(salesProvider.notifier)
+                          .setCategoryFilter(localSelectedCategory);
+
+                      final allIdx = _pipelineStatuses.length;
+                      final st = localSelectedStatus;
+                      final tabIdx =
+                          st == null ? allIdx : _pipelineStatuses.indexOf(st);
+                      final safeIdx = (tabIdx >= 0 ? tabIdx : allIdx)
+                          .clamp(0, _tabController.length - 1);
+                      if (_tabController.index != safeIdx) {
+                        _tabController.animateTo(safeIdx);
+                      }
+
+                      await ref
+                          .read(salesProvider.notifier)
+                          .setListCompanyCategoryAndReload(
+                            companyId: localSelectedCompanyId,
+                            category: localSelectedCategory,
+                          );
+                      if (sheetContext.mounted) {
+                        Navigator.pop(sheetContext);
+                      }
+                    },
+                    child: const Text('Apply Filters'),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
+}
+
+Widget _salesFunnelDateFilterButton({
+  required BuildContext context,
+  required String label,
+  required DateTime? date,
+  required Color textPrimary,
+  required Color textSecondary,
+  required Color borderColor,
+  required Color surfaceColor,
+  required VoidCallback onTap,
+  required VoidCallback onClear,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_today, size: 18, color: textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              date != null ? '${date.day}/${date.month}/${date.year}' : label,
+              style: TextStyle(
+                color: date != null ? textPrimary : textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          if (date != null)
+            GestureDetector(
+              onTap: onClear,
+              child: Icon(Icons.close, size: 18, color: textSecondary),
+            )
+          else
+            Icon(Icons.arrow_drop_down, color: textSecondary),
+        ],
+      ),
+    ),
+  );
 }

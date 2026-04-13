@@ -7,14 +7,11 @@ import 'attendance_location_row.dart';
 
 class RecordsList extends ConsumerWidget {
   final AttendanceState state;
+
   /// When embedded in [AttendanceHubPage], hide the duplicate page title.
   final bool showHeading;
 
-  const RecordsList({
-    super.key,
-    required this.state,
-    this.showHeading = true,
-  });
+  const RecordsList({super.key, required this.state, this.showHeading = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -109,7 +106,7 @@ class RecordsList extends ConsumerWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: state.records.length,
             itemBuilder: (context, index) {
-              final record = state.records[index];
+              final record = state.records.reversed.toList()[index];
               return RecordTile(record: record);
             },
           ),
@@ -135,11 +132,7 @@ class RecordTile extends StatelessWidget {
   /// When set (e.g. team attendance), shown above the date.
   final String? userHeader;
 
-  const RecordTile({
-    super.key,
-    required this.record,
-    this.userHeader,
-  });
+  const RecordTile({super.key, required this.record, this.userHeader});
 
   Color getStatusColor() {
     return switch (record.status) {

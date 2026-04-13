@@ -398,7 +398,7 @@ class MorePage extends ConsumerWidget {
 
           Center(
             child: Text(
-              'Version 1.2.2',
+              'Version 1.2.3',
               style: TextStyle(fontSize: 12, color: textTertiary),
             ),
           ),

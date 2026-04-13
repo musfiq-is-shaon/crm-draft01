@@ -6,17 +6,51 @@ import '../../data/repositories/expense_repository.dart';
 import '../../data/repositories/company_repository.dart';
 import '../../data/repositories/user_repository.dart';
 
+/// Client-side filters for the expenses list (tabs still apply status first).
+class ExpenseListFilters {
+  const ExpenseListFilters({
+    this.companyId,
+    this.tripType,
+    this.dateFrom,
+    this.dateTo,
+    this.purposeId,
+  });
+
+  final String? companyId;
+  /// `single_trip`, `round_trip`, or null for any.
+  final String? tripType;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final String? purposeId;
+
+  static const empty = ExpenseListFilters();
+
+  int get activeCount {
+    var n = 0;
+    if (companyId != null && companyId!.trim().isNotEmpty) n++;
+    if (tripType != null && tripType!.trim().isNotEmpty) n++;
+    if (dateFrom != null) n++;
+    if (dateTo != null) n++;
+    if (purposeId != null && purposeId!.trim().isNotEmpty) n++;
+    return n;
+  }
+}
+
 class ExpensesState {
   final List<Expense> expenses;
   final bool isLoading;
   final String? error;
   final String? selectedStatus;
+  final String? listSearch;
+  final ExpenseListFilters listFilters;
 
   const ExpensesState({
     this.expenses = const [],
     this.isLoading = false,
     this.error,
     this.selectedStatus,
+    this.listSearch,
+    this.listFilters = ExpenseListFilters.empty,
   });
 
   ExpensesState copyWith({
@@ -25,6 +59,9 @@ class ExpensesState {
     String? error,
     String? selectedStatus,
     bool clearStatus = false,
+    String? listSearch,
+    bool clearListSearch = false,
+    ExpenseListFilters? listFilters,
   }) {
     return ExpensesState(
       expenses: expenses ?? this.expenses,
@@ -33,12 +70,78 @@ class ExpensesState {
       selectedStatus: clearStatus
           ? null
           : (selectedStatus ?? this.selectedStatus),
+      listSearch: clearListSearch ? null : (listSearch ?? this.listSearch),
+      listFilters: listFilters ?? this.listFilters,
     );
   }
 
   List<Expense> get filteredExpenses {
     if (selectedStatus == null) return expenses;
     return expenses.where((e) => e.status == selectedStatus).toList();
+  }
+
+  /// Tab status: `'unpaid'`, `'paid'`, or `null` for all.
+  List<Expense> visibleForTab(String? tabStatus) {
+    Iterable<Expense> rows = expenses;
+    if (tabStatus != null) {
+      rows = rows.where((e) => e.status == tabStatus);
+    }
+
+    final q = listSearch?.trim().toLowerCase();
+    if (q != null && q.isNotEmpty) {
+      rows = rows.where((e) {
+        final company = (e.company?.name ?? '').toLowerCase();
+        final purpose = (e.purposeSummaryLine).toLowerCase();
+        final from = (e.fromLocation ?? '').toLowerCase();
+        final to = (e.toLocation ?? '').toLowerCase();
+        final creator = (e.createdByUser?.name ?? '').toLowerCase();
+        return company.contains(q) ||
+            purpose.contains(q) ||
+            from.contains(q) ||
+            to.contains(q) ||
+            creator.contains(q);
+      });
+    }
+
+    final f = listFilters;
+    if (f.companyId != null && f.companyId!.trim().isNotEmpty) {
+      final id = f.companyId!.trim();
+      rows = rows.where((e) => e.companyId == id);
+    }
+    if (f.tripType != null && f.tripType!.trim().isNotEmpty) {
+      final t = f.tripType!.trim();
+      rows = rows.where((e) => e.tripType == t);
+    }
+    if (f.purposeId != null && f.purposeId!.trim().isNotEmpty) {
+      final id = f.purposeId!.trim();
+      rows = rows.where((e) => e.purposeId == id);
+    }
+    if (f.dateFrom != null || f.dateTo != null) {
+      rows = rows.where((e) {
+        final d = e.date;
+        if (d == null) return false;
+        final day = DateTime(d.year, d.month, d.day);
+        if (f.dateFrom != null) {
+          final from = DateTime(
+            f.dateFrom!.year,
+            f.dateFrom!.month,
+            f.dateFrom!.day,
+          );
+          if (day.isBefore(from)) return false;
+        }
+        if (f.dateTo != null) {
+          final to = DateTime(
+            f.dateTo!.year,
+            f.dateTo!.month,
+            f.dateTo!.day,
+          );
+          if (day.isAfter(to)) return false;
+        }
+        return true;
+      });
+    }
+
+    return rows.toList();
   }
 
   List<Expense> get unpaidExpenses =>
@@ -139,8 +242,29 @@ class ExpensesNotifier extends StateNotifier<ExpensesState> {
     }
   }
 
+  void setListSearch(String? search) {
+    final trimmed = search?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      state = state.copyWith(clearListSearch: true);
+    } else {
+      state = state.copyWith(listSearch: trimmed, clearListSearch: false);
+    }
+  }
+
+  void setListFilters(ExpenseListFilters filters) {
+    state = state.copyWith(listFilters: filters);
+  }
+
   void clearFilters() {
     state = state.copyWith(clearStatus: true);
+  }
+
+  /// Clears search + list filters (tabs / [selectedStatus] unchanged).
+  void clearExpenseSearchAndListFilters() {
+    state = state.copyWith(
+      clearListSearch: true,
+      listFilters: ExpenseListFilters.empty,
+    );
   }
 
   Future<void> createExpense({

@@ -7,11 +7,21 @@ import 'package:flutter/foundation.dart'
         defaultTargetPlatform,
         kDebugMode,
         kIsWeb;
+import 'package:flutter/material.dart'
+    show
+        AppLifecycleState,
+        ScaffoldMessenger,
+        SnackBar,
+        SnackBarBehavior,
+        Text,
+        TextOverflow,
+        WidgetsBinding;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import '../../data/models/task_model.dart';
+import '../navigation/app_navigator.dart';
 
 /// One calendar day’s shift window (local wall-clock) for attendance reminders.
 typedef AttendanceShiftWindow = ({
@@ -99,7 +109,7 @@ class NotificationService {
         'crm_fcm_default',
         'Push notifications',
         description: 'Real-time alerts from your CRM (Firebase)',
-        importance: Importance.high,
+        importance: Importance.max,
         playSound: true,
         showBadge: true,
       ),
@@ -135,6 +145,7 @@ class NotificationService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
     );
     const details = NotificationDetails(
       android: androidDetails,
@@ -147,6 +158,38 @@ class NotificationService {
       details,
       payload: payload,
     );
+    _showForegroundInAppBanner(title, body);
+  }
+
+  /// When the app is open, the status-bar tray is easy to miss; mirror the alert in-app.
+  void _showForegroundInAppBanner(String title, String body) {
+    if (kIsWeb) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    void show() {
+      if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+        return;
+      }
+      final ctx = appNavigatorKey.currentContext;
+      if (ctx == null) return;
+      final messenger = ScaffoldMessenger.maybeOf(ctx);
+      messenger?.clearSnackBars();
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(
+            body.isEmpty ? title : '$title\n$body',
+            maxLines: 5,
+            overflow: TextOverflow.ellipsis,
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+          showCloseIcon: true,
+        ),
+      );
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => show());
   }
 
   /// Maps [tz.local] to the device IANA zone. Without this, the timezone

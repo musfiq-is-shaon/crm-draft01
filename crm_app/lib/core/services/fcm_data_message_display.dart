@@ -91,7 +91,7 @@ Future<void> showFcmDataMessageAsLocalNotification(RemoteMessage message) async 
     'crm_fcm_default',
     'Push notifications',
     description: 'Real-time data messages (Firebase)',
-    importance: Importance.high,
+    importance: Importance.max,
     playSound: true,
     showBadge: true,
   );

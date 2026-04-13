@@ -1,15 +1,19 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show Timer, unawaited;
 
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/services/attendance_reminder_controller.dart';
+import 'core/services/fcm_notification_sync.dart';
+import 'core/services/fcm_service.dart';
+import 'core/navigation/app_navigator.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/accent_color_provider.dart';
 import 'presentation/providers/amoled_provider.dart';
 import 'presentation/providers/attendance_provider.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/notifications_provider.dart';
 import 'presentation/providers/user_profile_shift_provider.dart';
 import 'core/network/session_expiration_provider.dart';
 import 'presentation/providers/rbac_provider.dart';
@@ -28,6 +32,10 @@ class CRMApp extends ConsumerStatefulWidget {
 }
 
 class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
+  /// [ref.listen] on auth may not run if the user is already authenticated when this widget mounts.
+  bool _fcmNotificationBridgeRegistered = false;
+  Timer? _inAppNotificationPollTimer;
+
   @override
   void initState() {
     super.initState();
@@ -37,20 +45,64 @@ class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
       await ref.read(accentColorProvider.notifier).init();
       await ref.read(amoledDarkProvider.notifier).init();
       if (!mounted) return;
-      ref.read(authProvider.notifier).checkAuthStatus();
+      // Must complete before checking auth — otherwise we skip FCM when session restores.
+      await ref.read(authProvider.notifier).checkAuthStatus();
+      if (!mounted) return;
+      if (ref.read(authProvider).status == AuthStatus.authenticated) {
+        _ensureFcmNotificationBridgeAndPolling();
+      }
     });
   }
 
   @override
   void dispose() {
+    _inAppNotificationPollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _ensureFcmNotificationBridgeAndPolling() {
+    if (!mounted) return;
+    if (ref.read(authProvider).status != AuthStatus.authenticated) return;
+    if (!_fcmNotificationBridgeRegistered) {
+      _fcmNotificationBridgeRegistered = true;
+      FcmService.instance.setForegroundSideEffects((message, showedTray) async {
+        await syncNotificationsAndMaybeShowTrayFromApi(
+          ref,
+          message,
+          showedTray,
+        );
+      });
+      unawaited(FcmService.instance.handleInitialMessageOpenedApp());
+    }
+    _inAppNotificationPollTimer?.cancel();
+    _inAppNotificationPollTimer = Timer.periodic(
+      const Duration(seconds: 25),
+      (_) {
+        if (!mounted) return;
+        if (ref.read(authProvider).status != AuthStatus.authenticated) return;
+        unawaited(pollForNewInAppNotifications(ref));
+      },
+    );
+    unawaited(pollForNewInAppNotifications(ref));
+  }
+
+  void _stopInAppNotificationPolling() {
+    _inAppNotificationPollTimer?.cancel();
+    _inAppNotificationPollTimer = null;
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(scheduleAttendanceReminders(ref.read));
+      if (ref.read(authProvider).status == AuthStatus.authenticated) {
+        unawaited(ref.read(notificationsProvider.notifier).load(silent: true));
+        _ensureFcmNotificationBridgeAndPolling();
+      }
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _stopInAppNotificationPolling();
     }
   }
 
@@ -72,6 +124,7 @@ class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
             ref.read,
             debounce: const Duration(milliseconds: 200),
           );
+          _ensureFcmNotificationBridgeAndPolling();
         });
       } else if (next.status == AuthStatus.unauthenticated) {
         ref.read(attendanceProvider.notifier).resetForLogout();
@@ -83,6 +136,9 @@ class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
         unawaited(
           Future(() => NotificationService().cancelAttendanceCheckInReminders()),
         );
+        _fcmNotificationBridgeRegistered = false;
+        FcmService.instance.setForegroundSideEffects(null);
+        _stopInAppNotificationPolling();
       }
     });
 
@@ -122,6 +178,7 @@ class _CRMAppState extends ConsumerState<CRMApp> with WidgetsBindingObserver {
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           title: 'CRM Pro',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(accent, lightDynamic),

@@ -1,12 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/rbac_page_keys.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/theme/design_tokens.dart';
+import '../../../data/models/company_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/company_provider.dart';
 import '../../providers/rbac_provider.dart'
     show rbacAccessDigestProvider, rbacModuleAdminProvider;
+import '../../widgets/app_search_filter_bar.dart';
 import '../../widgets/crm_card.dart';
+import '../../widgets/searchable_dropdown.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
@@ -23,6 +29,8 @@ class ExpensesListPage extends ConsumerStatefulWidget {
 class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -37,6 +45,8 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchDebounce?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -56,10 +66,29 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
         context,
         'Expenses',
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(49),
+          preferredSize: const Size.fromHeight(108),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              AppSearchFilterBar(
+                controller: _searchController,
+                hintText: 'Search expenses...',
+                activeFilterCount: expensesState.listFilters.activeCount,
+                onChanged: (value) {
+                  setState(() {});
+                  _searchDebounce?.cancel();
+                  _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+                    ref.read(expensesProvider.notifier).setListSearch(value);
+                  });
+                },
+                onClear: () {
+                  _searchDebounce?.cancel();
+                  _searchController.clear();
+                  ref.read(expensesProvider.notifier).setListSearch(null);
+                  setState(() {});
+                },
+                onFilterTap: () => _showExpenseFilterSheet(context),
+              ),
               Divider(
                 height: 1,
                 thickness: 1,
@@ -114,6 +143,299 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
     );
   }
 
+  void _showExpenseFilterSheet(BuildContext context) {
+    final expensesState = ref.read(expensesProvider);
+    final companiesState = ref.read(companiesProvider);
+    final purposesAsync = ref.read(expensePurposesProvider);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final borderColor = AppThemeColors.borderColor(context);
+    final f = expensesState.listFilters;
+
+    String? selectedCompanyId = f.companyId;
+    String? selectedTripType = f.tripType;
+    DateTime? dateFrom = f.dateFrom;
+    DateTime? dateTo = f.dateTo;
+    String? selectedPurposeId = f.purposeId;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom: AppSpacing.md + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        ref
+                            .read(expensesProvider.notifier)
+                            .clearExpenseSearchAndListFilters();
+                        _searchController.clear();
+                        setState(() {});
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Clear All',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Company',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: SearchableDropdown<Company>(
+                    items: companiesState.companies,
+                    value: selectedCompanyId != null
+                        ? companiesState.companies
+                            .where((c) => c.id == selectedCompanyId)
+                            .firstOrNull
+                        : null,
+                    hintText: 'All companies',
+                    labelText: '',
+                    dropdownColor: surfaceColor,
+                    textColor: textPrimary,
+                    hintColor: textSecondary,
+                    itemLabelBuilder: (c) => c.name,
+                    onChanged: (c) {
+                      setModalState(() => selectedCompanyId = c?.id);
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Trip type',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedTripType,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'All types',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: const [
+                    DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All'),
+                    ),
+                    DropdownMenuItem<String>(
+                      value: 'single_trip',
+                      child: Text('Single trip'),
+                    ),
+                    DropdownMenuItem<String>(
+                      value: 'round_trip',
+                      child: Text('Round trip'),
+                    ),
+                  ],
+                  onChanged: (v) => setModalState(() => selectedTripType = v),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Expense date',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _expenseDateFilterButton(
+                        context: context,
+                        label: 'From',
+                        date: dateFrom,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                        surfaceColor: surfaceColor,
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: dateFrom ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (date != null) {
+                            setModalState(() => dateFrom = date);
+                          }
+                        },
+                        onClear: () => setModalState(() => dateFrom = null),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _expenseDateFilterButton(
+                        context: context,
+                        label: 'To',
+                        date: dateTo,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                        surfaceColor: surfaceColor,
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: dateTo ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (date != null) {
+                            setModalState(() => dateTo = date);
+                          }
+                        },
+                        onClear: () => setModalState(() => dateTo = null),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Purpose',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                purposesAsync.when(
+                  data: (purposes) {
+                    final active = purposes.where((p) => p.isActive).toList();
+                    return DropdownButtonFormField<String>(
+                      initialValue: selectedPurposeId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        hintText: 'All purposes',
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: borderColor),
+                        ),
+                      ),
+                      dropdownColor: surfaceColor,
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('All'),
+                        ),
+                        ...active.map(
+                          (p) => DropdownMenuItem(
+                            value: p.id,
+                            child: Text(p.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setModalState(() => selectedPurposeId = v),
+                    );
+                  },
+                  loading: () => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  error: (e, st) => Text(
+                    'Could not load purposes',
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ),
+                SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      ref.read(expensesProvider.notifier).setListFilters(
+                            ExpenseListFilters(
+                              companyId: selectedCompanyId,
+                              tripType: selectedTripType,
+                              dateFrom: dateFrom,
+                              dateTo: dateTo,
+                              purposeId: selectedPurposeId,
+                            ),
+                          );
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Apply Filters'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildExpensesList(ExpensesState state, String? status) {
     final textPrimary = AppThemeColors.textPrimaryColor(context);
     final textSecondary = AppThemeColors.textSecondaryColor(context);
@@ -133,19 +455,14 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
       );
     }
 
-    var expenses = state.expenses;
-
-    // Apply status filter
-    if (status != null) {
-      expenses = expenses.where((e) => e.status == status).toList();
-    }
+    final expenses = state.visibleForTab(status);
 
     if (expenses.isEmpty) {
       return app_widgets.EmptyStateWidget(
         title: 'No expenses found',
         subtitle: status != null
-            ? 'No $status expenses yet'
-            : 'Create your first expense',
+            ? 'No $status expenses match your search or filters'
+            : 'Create your first expense or adjust filters',
         icon: Icons.receipt_long,
         buttonText: 'Add Expense',
         onButtonPressed: () {
@@ -303,4 +620,54 @@ class _ExpensesListPageState extends ConsumerState<ExpensesListPage>
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
+}
+
+Widget _expenseDateFilterButton({
+  required BuildContext context,
+  required String label,
+  required DateTime? date,
+  required Color textPrimary,
+  required Color textSecondary,
+  required Color borderColor,
+  required Color surfaceColor,
+  required VoidCallback onTap,
+  required VoidCallback onClear,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_today, size: 18, color: textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              date != null ? '${date.day}/${date.month}/${date.year}' : label,
+              style: TextStyle(
+                color: date != null ? textPrimary : textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          if (date != null)
+            GestureDetector(
+              onTap: onClear,
+              child: Icon(Icons.close, size: 18, color: textSecondary),
+            )
+          else
+            Icon(Icons.arrow_drop_down, color: textSecondary),
+        ],
+      ),
+    ),
+  );
 }

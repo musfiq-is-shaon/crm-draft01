@@ -9,17 +9,45 @@ import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/user_repository.dart'
     show UserRepository, userRepositoryProvider;
 
+/// Client-side filters for the orders list (API has no filter params).
+class OrderListFilters {
+  const OrderListFilters({
+    this.status,
+    this.assignToUserId,
+    this.deliveryFrom,
+    this.deliveryTo,
+  });
+
+  final String? status;
+  final String? assignToUserId;
+  final DateTime? deliveryFrom;
+  final DateTime? deliveryTo;
+
+  static const empty = OrderListFilters();
+
+  int get activeCount {
+    var n = 0;
+    if (status != null && status!.trim().isNotEmpty) n++;
+    if (assignToUserId != null && assignToUserId!.trim().isNotEmpty) n++;
+    if (deliveryFrom != null) n++;
+    if (deliveryTo != null) n++;
+    return n;
+  }
+}
+
 class OrdersState {
   final List<Order> orders;
   final bool isLoading;
   final String? error;
   final String? listSearch;
+  final OrderListFilters listFilters;
 
   const OrdersState({
     this.orders = const [],
     this.isLoading = false,
     this.error,
     this.listSearch,
+    this.listFilters = OrderListFilters.empty,
   });
 
   OrdersState copyWith({
@@ -28,27 +56,68 @@ class OrdersState {
     String? error,
     String? listSearch,
     bool clearListSearch = false,
+    OrderListFilters? listFilters,
   }) {
     return OrdersState(
       orders: orders ?? this.orders,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       listSearch: clearListSearch ? null : (listSearch ?? this.listSearch),
+      listFilters: listFilters ?? this.listFilters,
     );
   }
 
   /// Orders list API has no `search` param; filter in the UI layer.
   List<Order> get visibleOrders {
+    Iterable<Order> rows = orders;
+
     final q = listSearch?.trim().toLowerCase();
-    if (q == null || q.isEmpty) return orders;
-    return orders.where((o) {
-      final companyName = (o.company?.name ?? '').toLowerCase();
-      final details = o.orderDetails?.toLowerCase() ?? '';
-      final status = o.status?.toLowerCase() ?? '';
-      return companyName.contains(q) ||
-          details.contains(q) ||
-          status.contains(q);
-    }).toList();
+    if (q != null && q.isNotEmpty) {
+      rows = rows.where((o) {
+        final companyName = (o.company?.name ?? '').toLowerCase();
+        final details = o.orderDetails?.toLowerCase() ?? '';
+        final status = o.status?.toLowerCase() ?? '';
+        return companyName.contains(q) ||
+            details.contains(q) ||
+            status.contains(q);
+      });
+    }
+
+    final f = listFilters;
+    if (f.status != null && f.status!.trim().isNotEmpty) {
+      final st = f.status!.trim();
+      rows = rows.where((o) => o.status == st);
+    }
+    if (f.assignToUserId != null && f.assignToUserId!.trim().isNotEmpty) {
+      final id = f.assignToUserId!.trim();
+      rows = rows.where((o) => o.assignTo == id);
+    }
+    if (f.deliveryFrom != null || f.deliveryTo != null) {
+      rows = rows.where((o) {
+        final d = o.deliveryDate;
+        if (d == null) return false;
+        final day = DateTime(d.year, d.month, d.day);
+        if (f.deliveryFrom != null) {
+          final from = DateTime(
+            f.deliveryFrom!.year,
+            f.deliveryFrom!.month,
+            f.deliveryFrom!.day,
+          );
+          if (day.isBefore(from)) return false;
+        }
+        if (f.deliveryTo != null) {
+          final to = DateTime(
+            f.deliveryTo!.year,
+            f.deliveryTo!.month,
+            f.deliveryTo!.day,
+          );
+          if (day.isAfter(to)) return false;
+        }
+        return true;
+      });
+    }
+
+    return rows.toList();
   }
 }
 
@@ -124,6 +193,14 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
     } else {
       state = state.copyWith(listSearch: trimmed, clearListSearch: false);
     }
+  }
+
+  void setListFilters(OrderListFilters filters) {
+    state = state.copyWith(listFilters: filters);
+  }
+
+  void clearListFilters() {
+    state = state.copyWith(listFilters: OrderListFilters.empty);
   }
 }
 

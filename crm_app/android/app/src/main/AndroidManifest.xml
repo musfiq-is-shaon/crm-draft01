@@ -11,7 +11,7 @@
     
     <application
         android:label="CRM"
-        android:name="${applicationName}"
+        android:name="app.atl.crm.CrmApplication"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

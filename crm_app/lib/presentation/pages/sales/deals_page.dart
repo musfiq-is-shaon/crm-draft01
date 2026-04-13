@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/theme/design_tokens.dart';
+import '../../../data/models/company_model.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/models/renewal_model.dart';
+import '../../../data/models/user_model.dart';
+import '../../providers/company_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/renewal_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../widgets/app_search_filter_bar.dart';
+import '../../widgets/searchable_dropdown.dart';
 import '../../widgets/crm_card.dart';
 import '../../widgets/error_widget.dart' as app_widgets;
 import '../../widgets/loading_widget.dart';
@@ -42,6 +48,10 @@ class _DealsPageState extends ConsumerState<DealsPage>
     super.initState();
     _hubController = TabController(length: 3, vsync: this);
     _hubController.addListener(_onHubChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(usersProvider.notifier).loadUsers();
+      ref.read(companiesProvider.notifier).loadCompanies();
+    });
   }
 
   void _onHubChanged() {
@@ -120,6 +130,7 @@ class _DealsPageState extends ConsumerState<DealsPage>
                 _OrdersPane(
                   ordersState: ordersState,
                   searchController: _ordersSearchController,
+                  activeFilterCount: ordersState.listFilters.activeCount,
                   onSearchChanged: (v) {
                     setState(() {});
                     _ordersDebounce?.cancel();
@@ -137,6 +148,7 @@ class _DealsPageState extends ConsumerState<DealsPage>
                     ref.read(ordersProvider.notifier).setListSearch(null);
                     setState(() {});
                   },
+                  onFilterTap: () => _showOrdersFilterSheet(context),
                   onRefresh: () =>
                       ref.read(ordersProvider.notifier).loadOrders(),
                   onOpenDetail: (id) {
@@ -153,6 +165,7 @@ class _DealsPageState extends ConsumerState<DealsPage>
                 _RenewalsPane(
                   renewalsState: renewalsState,
                   searchController: _renewalsSearchController,
+                  activeFilterCount: renewalsState.listFilters.activeCount,
                   onSearchChanged: (v) {
                     setState(() {});
                     _renewalsDebounce?.cancel();
@@ -172,6 +185,7 @@ class _DealsPageState extends ConsumerState<DealsPage>
                         .read(renewalsProvider.notifier)
                         .setListSearchAndReload(null);
                   },
+                  onFilterTap: () => _showRenewalsFilterSheet(context),
                   onRefresh: () =>
                       ref.read(renewalsProvider.notifier).loadRenewals(),
                   onOpenRenewal: (renewal) {
@@ -199,21 +213,515 @@ class _DealsPageState extends ConsumerState<DealsPage>
             ),
     );
   }
+
+  void _showOrdersFilterSheet(BuildContext context) {
+    final ordersState = ref.read(ordersProvider);
+    final usersState = ref.read(usersProvider);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final borderColor = AppThemeColors.borderColor(context);
+    final f = ordersState.listFilters;
+
+    var statusOptions = ordersState.orders
+        .map((o) => o.status)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
+    final curStatus = f.status;
+    if (curStatus != null &&
+        curStatus.trim().isNotEmpty &&
+        !statusOptions.contains(curStatus)) {
+      statusOptions = [...statusOptions, curStatus]..sort();
+    }
+
+    String? selectedStatus = f.status;
+    String? selectedAssigneeId = f.assignToUserId;
+    DateTime? deliveryFrom = f.deliveryFrom;
+    DateTime? deliveryTo = f.deliveryTo;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom: AppSpacing.md + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        ref.read(ordersProvider.notifier).clearListFilters();
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Clear All',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Status',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedStatus,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'All statuses',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All'),
+                    ),
+                    ...statusOptions.map(
+                      (s) => DropdownMenuItem(value: s, child: Text(s)),
+                    ),
+                  ],
+                  onChanged: (v) => setModalState(() => selectedStatus = v),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Assigned to',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: SearchableDropdown<User>(
+                    items: usersState.users,
+                    value: selectedAssigneeId != null
+                        ? usersState.users
+                            .where((u) => u.id == selectedAssigneeId)
+                            .firstOrNull
+                        : null,
+                    hintText: 'Search by name or email...',
+                    labelText: '',
+                    dropdownColor: surfaceColor,
+                    textColor: textPrimary,
+                    hintColor: textSecondary,
+                    itemLabelBuilder: (user) => '${user.name} (${user.email})',
+                    onChanged: (user) {
+                      setModalState(() => selectedAssigneeId = user?.id);
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Delivery date',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _dealsDateFilterButton(
+                        context: context,
+                        label: 'From',
+                        date: deliveryFrom,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                        surfaceColor: surfaceColor,
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: deliveryFrom ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (date != null) {
+                            setModalState(() => deliveryFrom = date);
+                          }
+                        },
+                        onClear: () => setModalState(() => deliveryFrom = null),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _dealsDateFilterButton(
+                        context: context,
+                        label: 'To',
+                        date: deliveryTo,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                        surfaceColor: surfaceColor,
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: deliveryTo ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (date != null) {
+                            setModalState(() => deliveryTo = date);
+                          }
+                        },
+                        onClear: () => setModalState(() => deliveryTo = null),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      ref.read(ordersProvider.notifier).setListFilters(
+                            OrderListFilters(
+                              status: selectedStatus,
+                              assignToUserId: selectedAssigneeId,
+                              deliveryFrom: deliveryFrom,
+                              deliveryTo: deliveryTo,
+                            ),
+                          );
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Apply Filters'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRenewalsFilterSheet(BuildContext context) {
+    final renewalsState = ref.read(renewalsProvider);
+    final companiesState = ref.read(companiesProvider);
+    final usersState = ref.read(usersProvider);
+    final surfaceColor = AppThemeColors.surfaceColor(context);
+    final textPrimary = AppThemeColors.textPrimaryColor(context);
+    final textSecondary = AppThemeColors.textSecondaryColor(context);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final borderColor = AppThemeColors.borderColor(context);
+    final f = renewalsState.listFilters;
+
+    var sourceOptions = renewalsState.renewals
+        .map((r) => r.source)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
+    final curSource = f.source;
+    if (curSource != null &&
+        curSource.trim().isNotEmpty &&
+        !sourceOptions.contains(curSource)) {
+      sourceOptions = [...sourceOptions, curSource]..sort();
+    }
+
+    String? selectedCompanyId = f.companyId;
+    String? selectedKamId = f.kamUserId;
+    String? selectedSource = f.source;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom: AppSpacing.md + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        await ref
+                            .read(renewalsProvider.notifier)
+                            .clearListFiltersAndReload();
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Clear All',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Company',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: SearchableDropdown<Company>(
+                    items: companiesState.companies,
+                    value: selectedCompanyId != null
+                        ? companiesState.companies
+                            .where((c) => c.id == selectedCompanyId)
+                            .firstOrNull
+                        : null,
+                    hintText: 'All companies',
+                    labelText: '',
+                    dropdownColor: surfaceColor,
+                    textColor: textPrimary,
+                    hintColor: textSecondary,
+                    itemLabelBuilder: (c) => c.name,
+                    onChanged: (c) {
+                      setModalState(() => selectedCompanyId = c?.id);
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'KAM',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: SearchableDropdown<User>(
+                    items: usersState.users,
+                    value: selectedKamId != null
+                        ? usersState.users
+                            .where((u) => u.id == selectedKamId)
+                            .firstOrNull
+                        : null,
+                    hintText: 'Search by name or email...',
+                    labelText: '',
+                    dropdownColor: surfaceColor,
+                    textColor: textPrimary,
+                    hintColor: textSecondary,
+                    itemLabelBuilder: (user) => '${user.name} (${user.email})',
+                    onChanged: (user) {
+                      setModalState(() => selectedKamId = user?.id);
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Source',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedSource,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'All sources',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                  ),
+                  dropdownColor: surfaceColor,
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All'),
+                    ),
+                    ...sourceOptions.map(
+                      (s) => DropdownMenuItem(value: s, child: Text(s)),
+                    ),
+                  ],
+                  onChanged: (v) => setModalState(() => selectedSource = v),
+                ),
+                SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      await ref
+                          .read(renewalsProvider.notifier)
+                          .setListFiltersAndReload(
+                            RenewalListFilters(
+                              companyId: selectedCompanyId,
+                              kamUserId: selectedKamId,
+                              source: selectedSource,
+                            ),
+                          );
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                    child: const Text('Apply Filters'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Widget _dealsDateFilterButton({
+  required BuildContext context,
+  required String label,
+  required DateTime? date,
+  required Color textPrimary,
+  required Color textSecondary,
+  required Color borderColor,
+  required Color surfaceColor,
+  required VoidCallback onTap,
+  required VoidCallback onClear,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_today, size: 18, color: textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              date != null ? '${date.day}/${date.month}/${date.year}' : label,
+              style: TextStyle(
+                color: date != null ? textPrimary : textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          if (date != null)
+            GestureDetector(
+              onTap: onClear,
+              child: Icon(Icons.close, size: 18, color: textSecondary),
+            )
+          else
+            Icon(Icons.arrow_drop_down, color: textSecondary),
+        ],
+      ),
+    ),
+  );
 }
 
 class _OrdersPane extends StatelessWidget {
   final OrdersState ordersState;
   final TextEditingController searchController;
+  final int activeFilterCount;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onSearchClear;
+  final VoidCallback onFilterTap;
   final Future<void> Function() onRefresh;
   final void Function(String id) onOpenDetail;
 
   const _OrdersPane({
     required this.ordersState,
     required this.searchController,
+    required this.activeFilterCount,
     required this.onSearchChanged,
     required this.onSearchClear,
+    required this.onFilterTap,
     required this.onRefresh,
     required this.onOpenDetail,
   });
@@ -232,9 +740,10 @@ class _OrdersPane extends StatelessWidget {
         AppSearchFilterBar(
           controller: searchController,
           hintText: 'Search orders...',
-          activeFilterCount: 0,
+          activeFilterCount: activeFilterCount,
           onChanged: onSearchChanged,
           onClear: onSearchClear,
+          onFilterTap: onFilterTap,
         ),
         Divider(
           height: 1,
@@ -378,16 +887,20 @@ class _OrdersPane extends StatelessWidget {
 class _RenewalsPane extends StatelessWidget {
   final RenewalsState renewalsState;
   final TextEditingController searchController;
+  final int activeFilterCount;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onSearchClear;
+  final VoidCallback onFilterTap;
   final Future<void> Function() onRefresh;
   final void Function(Renewal renewal) onOpenRenewal;
 
   const _RenewalsPane({
     required this.renewalsState,
     required this.searchController,
+    required this.activeFilterCount,
     required this.onSearchChanged,
     required this.onSearchClear,
+    required this.onFilterTap,
     required this.onRefresh,
     required this.onOpenRenewal,
   });
@@ -405,9 +918,10 @@ class _RenewalsPane extends StatelessWidget {
         AppSearchFilterBar(
           controller: searchController,
           hintText: 'Search renewals...',
-          activeFilterCount: 0,
+          activeFilterCount: activeFilterCount,
           onChanged: onSearchChanged,
           onClear: onSearchClear,
+          onFilterTap: onFilterTap,
         ),
         Divider(
           height: 1,

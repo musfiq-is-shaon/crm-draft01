@@ -92,4 +92,17 @@
 -dontwarn com.google.android.play.core.integrity.**
 -dontwarn com.google.android.datatransport.**
 
+# Firebase Cloud Messaging — required for release (R8): killed/background delivery and Dart
+# background isolate must not strip Firebase or FlutterFire messaging classes.
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+-keep class io.flutter.plugins.firebase.** { *; }
+-keep class io.flutter.plugins.firebase.messaging.** { *; }
+
 

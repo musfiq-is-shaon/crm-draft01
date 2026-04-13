@@ -1,23 +1,28 @@
 import '../../data/models/attendance_model.dart';
 
-/// Local calendar date only (no time / UTC drift for “today”).
-DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
-
-/// `yyyy-MM-dd` using local calendar date.
-String attendanceDateYmd(DateTime d) {
-  return '${d.year.toString().padLeft(4, '0')}-'
-      '${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')}';
+/// Local calendar date at midnight. Uses [DateTime.toLocal] first so UTC instants align
+/// with the device’s weekday (fixes Sun–Sat “this week” vs ISO Mon–Sun when dates were UTC).
+DateTime _dateOnlyLocal(DateTime d) {
+  final l = d.toLocal();
+  return DateTime(l.year, l.month, l.day);
 }
 
-/// Sunday 00:00 (local) at the start of the Sun–Sat week containing [reference].
+/// `yyyy-MM-dd` for the **local** calendar day (see [_dateOnlyLocal]).
+String attendanceDateYmd(DateTime d) {
+  final l = _dateOnlyLocal(d);
+  return '${l.year.toString().padLeft(4, '0')}-'
+      '${l.month.toString().padLeft(2, '0')}-'
+      '${l.day.toString().padLeft(2, '0')}';
+}
+
+/// Sunday 00:00 **local** at the start of the Sun–Sat week containing [reference].
 ///
-/// Dart [DateTime.weekday]: Mon = 1 … Sun = 7.
+/// Dart [DateTime.weekday]: Mon = 1 … Sun = 7. This is **not** ISO week (Mon–Sun).
 DateTime startOfSundayWeekContaining(DateTime reference) {
-  final d = _dateOnly(reference);
+  final d = _dateOnlyLocal(reference);
   final wd = d.weekday;
-  final daysBack = wd == DateTime.sunday ? 0 : wd;
-  return d.subtract(Duration(days: daysBack));
+  final daysBackFromSunday = wd == DateTime.sunday ? 0 : wd;
+  return d.subtract(Duration(days: daysBackFromSunday));
 }
 
 /// Inclusive Saturday (same week as [startSunday]).
